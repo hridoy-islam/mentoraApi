@@ -1,11 +1,9 @@
 export const USER_ROLE = {
-  user: "user",
+  student: "student",
   admin: "admin",
-  staff: "staff",
-  verifier: "verifier",
-  signatory: "signatory",
-  collegeAdmin: "collegeAdmin",
-  campusAdmin: "campusAdmin"
+ 
+  instructor: "instructor",
+  company: "company"
 } as const;
 
 export const UserStatus = ["block", "active"];
