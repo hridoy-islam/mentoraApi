@@ -43,17 +43,60 @@ const updateLessonIntoDB = async (id: string, payload: Partial<TLesson>) => {
 
 
 const createLessonIntoDB = async (payload: Partial<TLesson>) => {
+  const lastLesson = await Lesson.findOne({ moduleId: payload.moduleId })
+    .sort({ index: -1 }) // highest index first
+    .lean();
+
+  //  Set the next index
+  const nextIndex = lastLesson ? (lastLesson.index ?? 0) + 1 : 0;
+
+  // Apply index if not provided manually
+  payload.index = payload.index ?? nextIndex;
+
   const result = await Lesson.create(payload);
   return result;
 };
 
 
+export const reorderLessonFromDB = async (
+  moduleId: string,
+  payload: any[]
+) => {
+  if (!payload || payload.length === 0) {
+    throw new Error("Payload is empty");
+  }
 
+  // Optional: Validate that all IDs exist in this module
+  const existingLessons = await Lesson.find({ moduleId }).select("_id").lean();
+  const existingIds = existingLessons.map(l => l._id.toString());
+
+  for (const item of payload) {
+    if (!existingIds.includes(item.id)) {
+      throw new Error(`Lesson ID ${item.id} does not belong to module ${moduleId}`);
+    }
+  }
+
+  // Prepare bulk operations
+  const bulkOps = payload.map(item => ({
+    updateOne: {
+      filter: { _id: item.id, moduleId },
+      update: { $set: { index: item.index } },
+    },
+  }));
+
+  // Execute bulk update
+  await Lesson.bulkWrite(bulkOps);
+
+  // Return updated sorted lessons
+  const updatedLessons = await Lesson.find({ moduleId }).sort({ index: 1 });
+  return updatedLessons;
+};
 
 export const LessonServices = {
   getAllLessonFromDB,
   getSingleLessonFromDB,
   updateLessonIntoDB,
-  createLessonIntoDB
+  createLessonIntoDB,
+  reorderLessonFromDB
   
 };

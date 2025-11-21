@@ -46,10 +46,34 @@ const createLesson: RequestHandler = catchAsync(async (req, res) => {
   });
 });
 
+export const reorderLesson = catchAsync(async (req, res) => {
+  const { id: moduleId } = req.params; // moduleId from URL
+  const { lessons } = req.body; // payload: [{id, index}, ...]
+
+  if (!Array.isArray(lessons) || lessons.length === 0) {
+    return sendResponse(res, {
+      statusCode: httpStatus.BAD_REQUEST,
+      success: false,
+      message: "Invalid lessons payload",
+      data: null,
+    });
+  }
+
+  const result = await LessonServices.reorderLessonFromDB(moduleId, lessons);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Lessons reordered successfully",
+    data: result,
+  });
+});
+
 export const LessonControllers = {
   getAllLesson,
   getSingleLesson,
   updateLesson,
-  createLesson
+  createLesson,
+  reorderLesson
   
 };

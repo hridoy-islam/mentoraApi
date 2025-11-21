@@ -2,35 +2,29 @@
 import express from "express";
 import auth from "../../middlewares/auth";
 import { upload } from "../../utils/multer";
-import { LessonControllers } from "./lesson.controller";
+import { QuestionBankControllers } from "./questionBank.controller";
 
 const router = express.Router();
 router.get(
   "/",
-  LessonControllers.getAllLesson
+  QuestionBankControllers.getAllQuestionBank
 );
 router.post(
   "/",
   auth("admin", "instructor"),
-  LessonControllers.createLesson
+  QuestionBankControllers.createQuestionBank
 );
 router.get(
   "/:id",
-  LessonControllers.getSingleLesson
+  QuestionBankControllers.getSingleQuestionBank
 );
 
 router.patch(
   "/:id",
   auth("admin", "instructor"),
 
-  LessonControllers.updateLesson
-);
-router.patch(
-  "/reorder/:id",
-  auth("admin", "instructor"),
-
-  LessonControllers.reorderLesson
+  QuestionBankControllers.updateQuestionBank
 );
 
 
-export const LessonRoutes = router;
+export const QuestionBankRoutes = router;
