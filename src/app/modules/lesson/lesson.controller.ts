@@ -23,6 +23,16 @@ const getSingleLesson = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const deleteLesson = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await LessonServices.deleteSingleLessonFromDB(id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Lesson is deleted succesfully",
+    data: result,
+  });
+});
 
 const updateLesson = catchAsync(async (req, res) => {
   const { id } = req.params;
@@ -74,6 +84,7 @@ export const LessonControllers = {
   getSingleLesson,
   updateLesson,
   createLesson,
-  reorderLesson
+  reorderLesson,
+  deleteLesson
   
 };

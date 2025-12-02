@@ -33,4 +33,12 @@ router.patch(
 );
 
 
+router.delete(
+  "/:id",
+  auth("admin", "instructor"),
+
+  LessonControllers.deleteLesson
+);
+
+
 export const LessonRoutes = router;

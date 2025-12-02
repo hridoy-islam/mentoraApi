@@ -23,7 +23,15 @@ const getAllLessonFromDB = async (query: Record<string, unknown>) => {
 };
 
 const getSingleLessonFromDB = async (id: string) => {
-  const result = await Lesson.findById(id);
+  const result = await Lesson.findById(id).populate('importedQuestions');
+  return result;
+};
+const deleteSingleLessonFromDB = async (id: string) => {
+    const lesson = await Lesson.findById(id);
+  if (!lesson) {
+    throw new AppError(httpStatus.NOT_FOUND, "Lesson not found");
+  }
+  const result = await Lesson.findByIdAndDelete(id);
   return result;
 };
 
@@ -97,6 +105,7 @@ export const LessonServices = {
   getSingleLessonFromDB,
   updateLessonIntoDB,
   createLessonIntoDB,
-  reorderLessonFromDB
+  reorderLessonFromDB,
+  deleteSingleLessonFromDB
   
 };

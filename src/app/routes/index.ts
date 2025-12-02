@@ -9,6 +9,9 @@ import { CourseModuleRoutes } from "../modules/courseModule/courseModule.route";
 import { LessonRoutes } from "../modules/lesson/lesson.route";
 import { CategoryRoutes } from "../modules/category/category.route";
 import { QuestionBankRoutes } from "../modules/questionBank/questionBank.route";
+import { EnrolledCourseRoutes } from "../modules/enrolledCourse/enrolledCourse.route";
+import { OrderRoutes } from "../modules/order/order.route";
+import { CourseLicenseRoutes } from "../modules/courseLicense/courseLicense.route";
 
 
 const router = Router();
@@ -36,6 +39,10 @@ const moduleRoutes = [
     route: CourseRoutes,
   },
   {
+    path: "/enrolled-courses",
+    route: EnrolledCourseRoutes,
+  },
+  {
     path: "/category",
     route: CategoryRoutes,
   },
@@ -51,6 +58,14 @@ const moduleRoutes = [
    {
     path: "/questions",
     route: QuestionBankRoutes,
+  },
+  {
+    path: "/order",
+    route: OrderRoutes,
+  },
+  {
+    path: "/course-license",
+    route: CourseLicenseRoutes,
   },
 
  

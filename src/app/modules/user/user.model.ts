@@ -120,6 +120,7 @@ const userSchema = new Schema<TUser, UserModel>(
     // gender: { type: String },
     dateOfBirth: { type: String },
     nationality: { type: String },
+    organizationId:{type: Schema.Types.ObjectId, ref:"User"}
    
   },
   {

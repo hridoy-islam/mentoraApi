@@ -62,7 +62,7 @@ export interface TUser {
   initial?: string;
   dateOfBirth?: Date;
   nationality?: string;
-
+organizationId?:Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 }
