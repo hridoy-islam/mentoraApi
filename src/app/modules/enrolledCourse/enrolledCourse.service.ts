@@ -6,8 +6,16 @@ import { TEnrolledCourse } from "./enrolledCourse.interface";
 import { EnrolledCourseSearchableFields } from "./enrolledCourse.constant";
 
 const getAllEnrolledCourseFromDB = async (query: Record<string, unknown>) => {
-  const EnrolledCourseQuery = new QueryBuilder(EnrolledCourse.find().populate("instructorId","name").populate("categoryId","name"), query)
-    .search(EnrolledCourseSearchableFields)
+const EnrolledCourseQuery = new QueryBuilder(
+    EnrolledCourse.find().populate({
+      path: 'courseId',
+      populate: [
+        { path: 'categoryId' },
+        { path: 'instructorId', select: 'name email' },
+      ],
+    }),
+    query
+  ).search(EnrolledCourseSearchableFields)
     .filter(query)
     .sort()
     .paginate()
