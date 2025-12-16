@@ -36,9 +36,7 @@ const userSchema = new Schema<TUser, UserModel>(
       type: Boolean,
       default: false,
     },
-    address: {
-      type: String,
-    },
+ 
     expertise: {
       type: String,
     },
@@ -120,7 +118,12 @@ const userSchema = new Schema<TUser, UserModel>(
     // gender: { type: String },
     dateOfBirth: { type: String },
     nationality: { type: String },
-    organizationId:{type: Schema.Types.ObjectId, ref:"User"}
+    organizationId:{type: Schema.Types.ObjectId, ref:"User"},
+    country: { type: String },
+    city: { type: String },
+    zipCode: { type: String },
+    state: { type: String },
+    address: { type: String },
    
   },
   {

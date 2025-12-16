@@ -42,7 +42,7 @@ export interface TUser {
   status: "block" | "active";
   isDeleted: boolean;
   authorized: boolean;
-  address?: string;
+
   image?: string;
   phone?: string;
   googleUid?: string;
@@ -62,7 +62,12 @@ export interface TUser {
   initial?: string;
   dateOfBirth?: Date;
   nationality?: string;
-organizationId?:Types.ObjectId;
+  organizationId?: Types.ObjectId;
+  country?: string;
+  city?: string;
+  zipCode?: string;
+  state?: string;
+  address?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

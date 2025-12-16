@@ -7,13 +7,7 @@ import { EnrolledCourseSearchableFields } from "./enrolledCourse.constant";
 
 const getAllEnrolledCourseFromDB = async (query: Record<string, unknown>) => {
 const EnrolledCourseQuery = new QueryBuilder(
-    EnrolledCourse.find().populate({
-      path: 'courseId',
-      populate: [
-        { path: 'categoryId' },
-        { path: 'instructorId', select: 'name email' },
-      ],
-    }),
+    EnrolledCourse.find().populate('studentId','name email').populate('courseId','title'),
     query
   ).search(EnrolledCourseSearchableFields)
     .filter(query)

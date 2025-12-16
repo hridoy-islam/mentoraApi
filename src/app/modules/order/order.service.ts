@@ -8,7 +8,10 @@ import { CourseLicense } from "../courseLicense/courseLicense.model";
 import { EnrolledCourse } from "../enrolledCourse/enrolledCourse.model";
 
 const getAllOrderFromDB = async (query: Record<string, unknown>) => {
-  const OrderQuery = new QueryBuilder(Order.find().populate("instructorId","name").populate("categoryId","name"), query)
+  const OrderQuery = new QueryBuilder(Order.find().populate("buyerId","name").populate({
+        path: "items.courseId",
+        select: "title  ", 
+      }), query)
     .search(OrderSearchableFields)
     .filter(query)
     .sort()
@@ -25,12 +28,12 @@ const getAllOrderFromDB = async (query: Record<string, unknown>) => {
 };
 
 const getSingleOrderFromDB = async (id: string) => {
-  const result = await Order.findById(id).populate("instructorId");
+  const result = await Order.findById(id);
   return result;
 };
 
 const updateOrderIntoDB = async (id: string, payload: Partial<TOrder>) => {
-  const order = await Order.findById(id).populate("instructorId","name").populate("categoryId","name");
+  const order = await Order.findById(id)
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
   }
