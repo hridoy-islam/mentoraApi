@@ -4,6 +4,8 @@ import AppError from "../../errors/AppError";
 import { CourseLicense } from "./courseLicense.model";
 import { TCourseLicense } from "./courseLicense.interface";
 import { CourseLicenseSearchableFields } from "./courseLicense.constant";
+import { Order } from "../order/order.model";
+import mongoose from "mongoose";
 
 const getAllCourseLicenseFromDB = async (query: Record<string, unknown>) => {
   const CourseLicenseQuery = new QueryBuilder(CourseLicense.find().populate("courseId","title image"), query)
@@ -12,12 +14,32 @@ const getAllCourseLicenseFromDB = async (query: Record<string, unknown>) => {
     .sort()
     .paginate()
     .fields();
+let totalOrderAmount = 0;
+
+  if (query.companyId) {
+    const totalAmountStats = await Order.aggregate([
+      {
+        $match: {
+          buyerId: new mongoose.Types.ObjectId(query.companyId as string),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$totalAmount" },
+        },
+      },
+    ]);
+
+    totalOrderAmount = totalAmountStats.length > 0 ? totalAmountStats[0].totalAmount : 0;
+  }
 
   const meta = await CourseLicenseQuery.countTotal();
   const result = await CourseLicenseQuery.modelQuery;
 
   return {
     meta,
+    totalOrderAmount, 
     result,
   };
 };

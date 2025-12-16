@@ -14,5 +14,7 @@ export type TOrder = {
   totalAmount: number;
   paymentStatus: "pending" | "paid" | "failed";
   transactionId?: string;
+  discount:Number;
+  couponCode:string;
   role: "student" | "company"; // Helps distinguish logic easily
 };

@@ -93,7 +93,7 @@ export const reorderLessonFromDB = async (
   }));
 
   // Execute bulk update
-  await Lesson.bulkWrite(bulkOps);
+  await Lesson.bulkWrite(bulkOps as any);
 
   // Return updated sorted lessons
   const updatedLessons = await Lesson.find({ moduleId }).sort({ index: 1 });
