@@ -4,6 +4,7 @@ import AppError from "../../errors/AppError";
 import { Course } from "./course.model";
 import { TCourse } from "./course.interface";
 import { CourseSearchableFields } from "./course.constant";
+import slugify from "slugify";
 
 const getAllCourseFromDB = async (query: Record<string, unknown>) => {
   const CourseQuery = new QueryBuilder(Course.find().populate("instructorId","name").populate("categoryId","name"), query)
@@ -32,7 +33,13 @@ const updateCourseIntoDB = async (id: string, payload: Partial<TCourse>) => {
   if (!course) {
     throw new AppError(httpStatus.NOT_FOUND, "Course not found");
   }
-
+if (payload.title) {
+    payload.slug = slugify(payload.title, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+  }
   const result = await Course.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -43,6 +50,14 @@ const updateCourseIntoDB = async (id: string, payload: Partial<TCourse>) => {
 
 
 const createCourseIntoDB = async (payload: Partial<TCourse>) => {
+
+  if (payload.title) {
+    payload.slug = slugify(payload.title, {
+      lower: true,     
+      strict: true,     
+      trim: true,    
+    });
+  }
   const result = await Course.create(payload);
   return result;
 };

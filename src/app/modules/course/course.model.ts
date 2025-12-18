@@ -4,6 +4,7 @@ import { TCourse } from "./course.interface";
 const CourseSchema = new Schema<TCourse>(
   {
     title: { type: String,  },
+    slug:{type:String},
     description: { type: String,  },
     categoryId: { type: Schema.Types.ObjectId, ref: "Category",  },
     image: { type: String,  },

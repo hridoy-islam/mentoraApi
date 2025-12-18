@@ -6,7 +6,7 @@ export interface TCourse {
   description: string;
   categoryId: Types.ObjectId;
   image: string;
-
+  slug: string;
   instructorId: Types.ObjectId;
   price: number;
   originalPrice?: number;
