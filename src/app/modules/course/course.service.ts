@@ -6,22 +6,63 @@ import { TCourse } from "./course.interface";
 import { CourseSearchableFields } from "./course.constant";
 import slugify from "slugify";
 
-const getAllCourseFromDB = async (query: Record<string, unknown>) => {
-  const CourseQuery = new QueryBuilder(Course.find().populate("instructorId","name").populate("categoryId","name"), query)
-    .search(CourseSearchableFields)
-    .filter(query)
-    .sort()
-    .paginate()
-    .fields();
+import { Types } from "mongoose"
 
-  const meta = await CourseQuery.countTotal();
-  const result = await CourseQuery.modelQuery;
+const getAllCourseFromDB = async (query: Record<string, unknown>) => {
+  const {
+    minPrice,
+    maxPrice,
+    sort = "default",
+    category,
+  } = query as {
+    minPrice?: string
+    maxPrice?: string
+    sort?: string
+    category?: string
+  }
+
+
+  const filter: any = {
+    status: "active",
+  }
+
+  if (category && Types.ObjectId.isValid(category)) {
+    filter.categoryId = category
+  }
+
+ 
+  if (minPrice !== undefined && maxPrice !== undefined) {
+    filter.price = {
+      $gte: Number(minPrice),
+      $lte: Number(maxPrice),
+    }
+  }
+
+  
+  let courseQuery = Course.find(filter)
+    .populate("instructorId", "name")
+    .populate("categoryId", "name")
+
+  if (sort === "low-to-high") {
+    courseQuery = courseQuery.sort({ price: 1 })
+  } else if (sort === "high-to-low") {
+    courseQuery = courseQuery.sort({ price: -1 })
+  }
+
+  const CourseQuery = new QueryBuilder(courseQuery, query)
+    .search(CourseSearchableFields)
+    .paginate()
+    .fields()
+
+  const meta = await CourseQuery.countTotal()
+  const result = await CourseQuery.modelQuery
 
   return {
     meta,
     result,
-  };
-};
+  }
+}
+
 
 const getSingleCourseFromDB = async (id: string) => {
   const result = await Course.findById(id).populate("instructorId");
