@@ -47,6 +47,8 @@ const getAllCourseFromDB = async (query: Record<string, unknown>) => {
     courseQuery = courseQuery.sort({ price: 1 })
   } else if (sort === "high-to-low") {
     courseQuery = courseQuery.sort({ price: -1 })
+  }else{
+    courseQuery= courseQuery.sort({createdAt:-1})
   }
 
   const CourseQuery = new QueryBuilder(courseQuery, query)
@@ -66,6 +68,13 @@ const getAllCourseFromDB = async (query: Record<string, unknown>) => {
 
 const getSingleCourseFromDB = async (id: string) => {
   const result = await Course.findById(id).populate("instructorId");
+  return result;
+};
+const getSingleCourseBySlugFromDB = async (slug: string) => {
+  const result = await Course.findOne({
+    slug,
+    status: "active",
+  }).populate("instructorId");
   return result;
 };
 
@@ -110,6 +119,7 @@ export const CourseServices = {
   getAllCourseFromDB,
   getSingleCourseFromDB,
   updateCourseIntoDB,
-  createCourseIntoDB
+  createCourseIntoDB,
+  getSingleCourseBySlugFromDB
   
 };

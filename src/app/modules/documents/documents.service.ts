@@ -9,7 +9,7 @@ const storage = new Storage({
   keyFilename: "./work.json",
   projectId: "vast-pride-453709-n7",
 });
-const bucketName = "cyberpeerscareer";
+const bucketName = "medicaretraining";
 const bucket = storage.bucket(bucketName);
 
 const UploadDocumentToGCS = async (file: any, payload: any) => {
@@ -56,13 +56,8 @@ const UploadDocumentToGCS = async (file: any, payload: any) => {
       await user.save();
 
       return { entityId, file_type, fileUrl };
-    } else if (file_type === "studentDoc") {
-      return { entityId, file_type, fileUrl };
-    } else if (file_type === "resumeDoc") {
-      const pdfData = await pdfParse(file.buffer);
-      const extractedText = pdfData.text;
-      return { entityId, file_type, fileUrl, fileContent: extractedText };
-    } else if (file_type === "careerDoc") {
+    
+    } else {
       return { entityId, file_type, fileUrl };
     }
   } catch (error) {

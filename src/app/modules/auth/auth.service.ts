@@ -73,8 +73,7 @@ const checkLogin = async (payload: TLogin, req: any) => {
       name: foundUser?.name,
       role: foundUser?.role,
       authorized: foundUser?.authorized,
-      isValided: foundUser?.isValided,
-      isCompleted: foundUser?.isCompleted,
+      organizationId:foundUser?.organizationId
     };
 
     // Generate access and refresh tokens

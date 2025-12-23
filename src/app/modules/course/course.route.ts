@@ -18,6 +18,10 @@ router.get(
   "/:id",
   CourseControllers.getSingleCourse
 );
+router.get(
+  "/slug/:slug",
+  CourseControllers.getSingleCourseBySlug
+);
 
 router.patch(
   "/:id",
