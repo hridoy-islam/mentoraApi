@@ -4,6 +4,8 @@ import AppError from "../../errors/AppError";
 import { EnrolledCourse } from "./enrolledCourse.model";
 import { TEnrolledCourse } from "./enrolledCourse.interface";
 import { EnrolledCourseSearchableFields } from "./enrolledCourse.constant";
+import { CourseLicense } from "../courseLicense/courseLicense.model";
+import mongoose from "mongoose";
 
 const getAllEnrolledCourseFromDB = async (query: Record<string, unknown>) => {
 const EnrolledCourseQuery = new QueryBuilder(
@@ -60,10 +62,58 @@ const updateEnrolledCourseIntoDB = async (id: string, payload: Partial<TEnrolled
 
 
 const createEnrolledCourseIntoDB = async (payload: Partial<TEnrolledCourse>) => {
-  const result = await EnrolledCourse.create(payload);
-  return result;
-};
+  const session = await mongoose.startSession();
 
+  try {
+    session.startTransaction();
+
+    if (payload.licenseId && payload.studentId) {
+      const isAlreadyEnrolled = await EnrolledCourse.findOne({
+        studentId: payload.studentId,
+        licenseId: payload.licenseId,
+      }).session(session);
+
+      if (isAlreadyEnrolled) {
+        throw new AppError(httpStatus.CONFLICT, "Student is already enrolled using this license");
+      }
+    }
+
+    if (payload.licenseId) {
+      const license = await CourseLicense.findById(payload.licenseId).session(session);
+
+      if (!license) {
+        throw new AppError(httpStatus.NOT_FOUND, "License not found");
+      }
+
+      if (license.usedSeats >= license.totalSeats) {
+        throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
+      }
+
+      await CourseLicense.findByIdAndUpdate(
+        payload.licenseId,
+        {
+          $inc: { usedSeats: 1 },
+        },
+        { session, new: true }
+      );
+    }
+
+    const result = await EnrolledCourse.create([payload], { session });
+
+    if (!result.length) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Failed to enroll in course");
+    }
+
+    await session.commitTransaction();
+    await session.endSession();
+
+    return result[0];
+  } catch (error) {
+    await session.abortTransaction();
+    await session.endSession();
+    throw error;
+  }
+};
 
 
 

@@ -11,7 +11,7 @@ router.get(
 );
 router.post(
   "/",
-  auth("admin", "instructor"),
+  auth("admin", "instructor","company","student"),
   EnrolledCourseControllers.createEnrolledCourse
 );
 router.get(
