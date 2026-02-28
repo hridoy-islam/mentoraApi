@@ -25,6 +25,12 @@ router.patch(
 
   CourseModuleControllers.updateCourseModule
 );
+router.patch(
+  "/reorder/:id",
+  auth("admin", "instructor"),
+
+  CourseModuleControllers.reorderCourseModule
+);
 
 
 router.delete(

@@ -21,7 +21,7 @@ router.get(
 
 router.patch(
   "/:id",
-  auth("admin", "instructor"),
+  auth("admin", "instructor","company","student"),
 
   EnrolledCourseControllers.updateEnrolledCourse
 );

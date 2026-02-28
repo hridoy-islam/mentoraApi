@@ -57,11 +57,37 @@ const deleteSingleCourseModule = catchAsync(async (req, res) => {
   });
 });
 
+const reorderCourseModule = catchAsync(async (req, res) => {
+  const { id: courseId } = req.params; 
+  const { modules } = req.body; 
+
+  if (!Array.isArray(modules) || modules.length === 0) {
+    return sendResponse(res, {
+      statusCode: httpStatus.BAD_REQUEST,
+      success: false,
+      message: "Invalid modules payload",
+      data: null,
+    });
+  }
+
+  const result = await CourseModuleServices.reorderCourseModuleFromDB(courseId, modules);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Course modules reordered successfully",
+    data: result,
+  });
+});
+
+
+
 export const CourseModuleControllers = {
   getAllCourseModule,
   getSingleCourseModule,
   updateCourseModule,
   createCourseModule,
-  deleteSingleCourseModule
+  deleteSingleCourseModule,
+  reorderCourseModule
   
 };

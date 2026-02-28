@@ -6,15 +6,14 @@ const QuizQuestionSchema = new Schema<QuizQuestion>(
     question: { type: String, required: true },
     type: { type: String, enum: ["mcq", "short"], required: true },
 
-    // MCQ fields
+   
     options: { type: [String], default: undefined },
     correctAnswers: {
       type: [String],
       default: undefined,
-     
     },
 
-    // Short question field
+    
     shortAnswer: { type: String, default: undefined },
   },
   {

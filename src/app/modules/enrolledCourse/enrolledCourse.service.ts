@@ -13,17 +13,8 @@ const EnrolledCourseQuery = new QueryBuilder(
   .populate('studentId', 'name email')
   .populate({
     path: 'courseId',
-    select: 'title instructorId categoryId slug image',
-    populate: [
-      {
-        path: 'instructorId',
-        select: 'name',
-      },
-      {
-        path: 'categoryId',
-        select: 'name',
-      },
-    ],
+    select: 'title  categoryId slug image',
+    
   }),
     query
   ).search(EnrolledCourseSearchableFields)
@@ -47,7 +38,7 @@ const getSingleEnrolledCourseFromDB = async (id: string) => {
 };
 
 const updateEnrolledCourseIntoDB = async (id: string, payload: Partial<TEnrolledCourse>) => {
-  const enrolledCourse = await EnrolledCourse.findById(id).populate("instructorId","name").populate("categoryId","name");
+  const enrolledCourse = await EnrolledCourse.findById(id);
   if (!enrolledCourse) {
     throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
   }

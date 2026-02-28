@@ -18,7 +18,7 @@ const EnrolledCourseSchema = new Schema<TEnrolledCourse>(
     // Who paid?
     purchasedBy: {
       type: Schema.Types.ObjectId,
-      ref: "User", // or "Company"
+      ref: "User", 
       required: true,
     },
 

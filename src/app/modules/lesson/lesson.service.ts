@@ -6,7 +6,13 @@ import { TLesson } from "./lesson.interface";
 import { LessonSearchableFields } from "./lesson.constant";
 
 const getAllLessonFromDB = async (query: Record<string, unknown>) => {
-  const LessonQuery = new QueryBuilder(Lesson.find(), query)
+  const LessonQuery = new QueryBuilder(
+    Lesson.find().populate({
+      path: 'importedQuestions',
+      select: '-correctAnswers -shortAnswer', 
+    }),
+    query
+  )
     .search(LessonSearchableFields)
     .filter(query)
     .sort()

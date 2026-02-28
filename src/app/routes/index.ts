@@ -12,6 +12,7 @@ import { QuestionBankRoutes } from "../modules/questionBank/questionBank.route";
 import { EnrolledCourseRoutes } from "../modules/enrolledCourse/enrolledCourse.route";
 import { OrderRoutes } from "../modules/order/order.route";
 import { CourseLicenseRoutes } from "../modules/courseLicense/courseLicense.route";
+import { QuizSubmissionRoutes } from "../modules/quizSubmission/quizSubmission.route";
 
 
 const router = Router();
@@ -66,6 +67,10 @@ const moduleRoutes = [
   {
     path: "/course-license",
     route: CourseLicenseRoutes,
+  },
+  {
+    path: "/quiz-submission",
+    route: QuizSubmissionRoutes,
   },
 
  

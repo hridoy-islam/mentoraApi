@@ -15,7 +15,9 @@ const CourseModuleSchema = new Schema<TCourseModule>(
     description: {
       type: String,
       default: "",
-    }
+    },
+        index: { type: Number, default: 0 },
+
   },
   {
     timestamps: true,

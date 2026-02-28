@@ -57,12 +57,50 @@ const createCourseModuleIntoDB = async (payload: Partial<TCourseModule>) => {
 
 
 
+const reorderCourseModuleFromDB = async (
+  courseId: string,
+  payload: any[]
+) => {
+  if (!payload || payload.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payload is empty");
+  }
+
+  // Validate that all IDs exist in this course
+  const existingModules = await CourseModule.find({ courseId }).select("_id").lean();
+  const existingIds = existingModules.map((m) => m._id.toString());
+
+  for (const item of payload) {
+    if (!existingIds.includes(item.id)) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        `CourseModule ID ${item.id} does not belong to course ${courseId}`
+      );
+    }
+  }
+
+  // Prepare bulk operations
+  const bulkOps = payload.map((item) => ({
+    updateOne: {
+      filter: { _id: item.id, courseId },
+      update: { $set: { index: item.index } },
+    },
+  }));
+
+  // Execute bulk update
+  await CourseModule.bulkWrite(bulkOps as any);
+
+  // Return updated sorted modules
+  const updatedModules = await CourseModule.find({ courseId }).sort({ index: 1 });
+  return updatedModules;
+};
+
 
 export const CourseModuleServices = {
   getAllCourseModuleFromDB,
   getSingleCourseModuleFromDB,
   updateCourseModuleIntoDB,
   createCourseModuleIntoDB,
-  deleteSingleCourseModuleFromDB
+  deleteSingleCourseModuleFromDB,
+  reorderCourseModuleFromDB
   
 };
