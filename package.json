@@ -18,7 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
-    "axios": "^1.13.6",
+    "axios": "^1.15.2",
     "bcrypt": "^5.1.1",
     "cloudinary": "^1.41.1",
     "cookie-parser": "^1.4.6",

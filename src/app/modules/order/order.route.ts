@@ -26,5 +26,14 @@ router.patch(
   OrderControllers.updateOrder
 );
 
+// 1. User clicks Pay → backend creates pending order + returns Worldpay URL
+router.post("/initiate-payment", auth(), OrderControllers.initiatePayment);
+ 
+// 2. Worldpay calls this after payment — NO auth middleware
+router.post("/webhook/worldpay", OrderControllers.worldpayWebhook);
+ 
+// 3. Frontend polls this to check if webhook has confirmed payment
+router.get("/payment-status/:id", auth(), OrderControllers.getPaymentStatus);
+
 
 export const OrderRoutes = router;
