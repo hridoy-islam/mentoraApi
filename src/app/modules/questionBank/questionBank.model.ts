@@ -9,7 +9,7 @@ const QuestionBankSchema = new Schema<TQuestionBank>(
 
     // MCQ fields
     options: { type: [String], default: undefined },
-    correctAnswers: { type: [String], default: undefined },
+    correctAnswers: { type: [String], default: undefined,  },
     optionType:{ type: [String], enum: ["text", "image"], required: true },
 
     // Short question

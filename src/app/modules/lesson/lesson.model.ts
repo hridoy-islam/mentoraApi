@@ -11,6 +11,7 @@ const QuizQuestionSchema = new Schema<QuizQuestion>(
     correctAnswers: {
       type: [String],
       default: undefined,
+      select: false,
     },
 
     

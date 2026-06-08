@@ -8,8 +8,12 @@ import { QuestionBank } from "../questionBank/questionBank.model";
 import { Lesson } from "../lesson/lesson.model";
 
 
-const evaluateAnswers = async (lessonId: string, providedAnswers: any[]) => {
-  const lesson = await Lesson.findById(lessonId);
+// ─── Internal helper: evaluate raw answers against stored correct answers ────
+const evaluateAnswers = async (lessonId: string, providedAnswers: { questionId: string; providedAnswer: string[] }[]) => {
+  const lesson = await Lesson.findById(lessonId)
+    .select('+questions.correctAnswers')
+    .lean();
+  
   if (!lesson) {
     throw new AppError(httpStatus.NOT_FOUND, "Lesson not found");
   }
@@ -20,7 +24,7 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: any[]) => {
   for (const ans of providedAnswers) {
     let correctAnswers: string[] = [];
 
-    // 1. Check if the question exists inside the embedded Lesson questions
+    // 1. Check embedded lesson questions first
     const embeddedQuestion = lesson.questions?.find(
       (q: any) => q._id.toString() === ans.questionId.toString()
     );
@@ -28,7 +32,7 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: any[]) => {
     if (embeddedQuestion) {
       correctAnswers = embeddedQuestion.correctAnswers || [];
     } else {
-      // 2. If not found in Lesson, check QuestionBank
+      // 2. Fall back to QuestionBank (imported questions)
       const qbQuestion = await QuestionBank.findById(ans.questionId);
       if (qbQuestion) {
         correctAnswers = qbQuestion.correctAnswers || [];
@@ -40,32 +44,33 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: any[]) => {
       }
     }
 
-    // 3. Strict Comparison: Check if the provided answer matches the correct answers EXACTLY.
-    // Length must be equal, and every selected option must be in the correct answers.
+    // 3. Strict comparison — same length and every selected value must match
     const isCorrect =
       ans.providedAnswer.length === correctAnswers.length &&
-      [...ans.providedAnswer].sort().every((val, index) => val === [...correctAnswers].sort()[index]);
+      [...ans.providedAnswer].sort().every(
+        (val, index) => val === [...correctAnswers].sort()[index]
+      );
 
-    // 4. Assign marks
-    const marksAwarded = isCorrect ? 1 : 0; 
+    const marksAwarded = isCorrect ? 1 : 0;
     totalScore += marksAwarded;
 
     evaluatedAnswers.push({
       questionId: ans.questionId,
       providedAnswer: ans.providedAnswer,
+      correctAnswers, // <-- ADDED THIS LINE to save the correct answer in the DB
       isCorrect,
       marksAwarded,
     });
   }
 
-  // 5. Determine Passing Logic (e.g., 50% required to pass)
+  // 4. Pass = 50 % or above
   const isPassed = totalScore >= providedAnswers.length / 2;
 
   return { evaluatedAnswers, totalScore, isPassed };
 };
 
 
-
+// ─── GET ALL ─────────────────────────────────────────────────────────────────
 const getAllQuizSubmissionFromDB = async (query: Record<string, unknown>) => {
   const QuizSubmissionQuery = new QueryBuilder(QuizSubmission.find(), query)
     .search(QuizSubmissionSearchableFields)
@@ -77,17 +82,19 @@ const getAllQuizSubmissionFromDB = async (query: Record<string, unknown>) => {
   const meta = await QuizSubmissionQuery.countTotal();
   const result = await QuizSubmissionQuery.modelQuery;
 
-  return {
-    meta,
-    result,
-  };
+  return { meta, result };
 };
 
+
+// ─── GET ONE ──────────────────────────────────────────────────────────────────
 const getSingleQuizSubmissionFromDB = async (id: string) => {
   const result = await QuizSubmission.findById(id);
   return result;
 };
 
+
+// ─── CREATE / UPSERT ─────────────────────────────────────────────────────────
+// The frontend sends raw { questionId, providedAnswer[] } — we evaluate here.
 const createQuizSubmissionIntoDB = async (payload: Partial<TQuizSubmission>) => {
   const { studentId, courseId, lessonId, answers } = payload;
 
@@ -95,64 +102,61 @@ const createQuizSubmissionIntoDB = async (payload: Partial<TQuizSubmission>) => 
     throw new AppError(httpStatus.BAD_REQUEST, "Missing required fields");
   }
 
-  // 1. Evaluate the new answers
+  // Evaluate raw answers
   const { evaluatedAnswers, totalScore, isPassed } = await evaluateAnswers(
     lessonId.toString(),
-    answers
+    answers as { questionId: string; providedAnswer: string[] }[]
   );
 
-  // 2. Check if a submission ALREADY exists for this student and lesson
-  const existingSubmission = await QuizSubmission.findOne({
-    studentId,
-    lessonId,
-  });
+  // Upsert: if a submission already exists for this student + lesson, update it
+  const existingSubmission = await QuizSubmission.findOne({ studentId, lessonId });
 
-  // 3. IF EXISTS -> UPDATE IT
   if (existingSubmission) {
-    existingSubmission.answers = evaluatedAnswers;
+    existingSubmission.answers = evaluatedAnswers as any;
     existingSubmission.totalScore = totalScore;
     existingSubmission.isPassed = isPassed;
-    existingSubmission.attemptNumber += 1; // Increment the attempt count
+    existingSubmission.attemptNumber += 1;
 
     await existingSubmission.save();
     return existingSubmission;
   }
 
-  // 4. IF IT DOES NOT EXIST -> CREATE NEW
-  const submissionPayload = {
+  // First attempt — create new document
+  const result = await QuizSubmission.create({
     ...payload,
     attemptNumber: 1,
     answers: evaluatedAnswers,
     totalScore,
     isPassed,
-  };
+  });
 
-  const result = await QuizSubmission.create(submissionPayload);
   return result;
 };
 
 
-// Update Quiz Submission (Retries)
+// ─── UPDATE (retry via PATCH /quiz-submission/:id) ───────────────────────────
 const updateQuizSubmissionIntoDB = async (id: string, payload: Partial<TQuizSubmission>) => {
   const quizSubmission = await QuizSubmission.findById(id);
   if (!quizSubmission) {
     throw new AppError(httpStatus.NOT_FOUND, "QuizSubmission not found");
   }
 
-  let updatedData = { ...payload };
+  const updatedData: Partial<TQuizSubmission> = { ...payload };
 
   if (payload.answers) {
-    const lessonIdToUse = payload.lessonId ? payload.lessonId.toString() : quizSubmission.lessonId.toString();
-    
+    const lessonIdToUse = payload.lessonId
+      ? payload.lessonId.toString()
+      : quizSubmission.lessonId.toString();
+
     const { evaluatedAnswers, totalScore, isPassed } = await evaluateAnswers(
       lessonIdToUse,
-      payload.answers
+      payload.answers as { questionId: string; providedAnswer: string[] }[]
     );
 
-    updatedData.answers = evaluatedAnswers;
+    updatedData.answers = evaluatedAnswers as any;
     updatedData.totalScore = totalScore;
     updatedData.isPassed = isPassed;
-    updatedData.attemptNumber = quizSubmission.attemptNumber + 1; 
+    updatedData.attemptNumber = quizSubmission.attemptNumber + 1;
   }
 
   const result = await QuizSubmission.findByIdAndUpdate(id, updatedData, {
@@ -163,8 +167,10 @@ const updateQuizSubmissionIntoDB = async (id: string, payload: Partial<TQuizSubm
   return result;
 };
 
+
+// ─── DELETE ───────────────────────────────────────────────────────────────────
 const deleteQuizSubmissionFromDB = async (id: string) => {
-   const quizSubmission = await QuizSubmission.findById(id);
+  const quizSubmission = await QuizSubmission.findById(id);
   if (!quizSubmission) {
     throw new AppError(httpStatus.NOT_FOUND, "QuizSubmission not found");
   }
@@ -176,8 +182,7 @@ const deleteQuizSubmissionFromDB = async (id: string) => {
 export const QuizSubmissionServices = {
   getAllQuizSubmissionFromDB,
   getSingleQuizSubmissionFromDB,
-  updateQuizSubmissionIntoDB,
   createQuizSubmissionIntoDB,
-  deleteQuizSubmissionFromDB
-  
+  updateQuizSubmissionIntoDB,
+  deleteQuizSubmissionFromDB,
 };

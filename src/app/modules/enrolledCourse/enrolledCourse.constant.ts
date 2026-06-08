@@ -1,3 +1,3 @@
 
 
-export const EnrolledCourseSearchableFields = ["title"];
+export const EnrolledCourseSearchableFields = ["title","purchasedBy"];

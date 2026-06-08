@@ -25,6 +25,12 @@ router.patch(
 
   QuestionBankControllers.updateQuestionBank
 );
+router.delete(
+  "/:id",
+  auth("admin", "instructor"),
+
+  QuestionBankControllers.deleteQuestionBank
+);
 
 
 export const QuestionBankRoutes = router;

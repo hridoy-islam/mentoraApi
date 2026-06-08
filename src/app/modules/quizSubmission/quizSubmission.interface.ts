@@ -4,6 +4,7 @@ export type TAnswerRecord = {
   questionId: Types.ObjectId; // References the specific question in Lesson or QuestionBank
   providedAnswer: string[];   // Array of strings to handle multiple-choice (e.g., ["A", "C"]) or single short answers
   isCorrect: boolean;         // Evaluated when the quiz is submitted
+  correctAnswers?: string[];     // Stored correct answers for reference (not required to save, but can be useful for review)
   marksAwarded: number;       // How many marks they got for this specific question
 };
 

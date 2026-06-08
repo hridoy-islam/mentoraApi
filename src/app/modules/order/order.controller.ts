@@ -9,17 +9,18 @@ const getAllOrder: RequestHandler = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Orders retrived succesfully",
+    message: "Orders retrieved successfully",
     data: result,
   });
 });
+
 const getSingleOrder = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await OrderServices.getSingleOrderFromDB(id);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Order is retrieved succesfully",
+    message: "Order is retrieved successfully",
     data: result,
   });
 });
@@ -30,14 +31,13 @@ const updateOrder = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Order is updated succesfully",
+    message: "Order is updated successfully",
     data: result,
   });
 });
 
 const createOrder: RequestHandler = catchAsync(async (req, res) => {
   const result = await OrderServices.createOrderIntoDB(req.body);
-
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -45,15 +45,16 @@ const createOrder: RequestHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
 /**
  * POST /api/order/initiate-payment
  *
  * Called by the checkout page when the user clicks "Proceed to Payment".
- * Creates a pending order and returns a Worldpay redirect URL.
+ * Creates a pending order in DB and returns a Stripe Checkout redirect URL.
  * Requires auth middleware.
  */
 const initiatePayment: RequestHandler = catchAsync(async (req, res) => {
-  const result = await OrderServices.initiateWorldpayPayment(req.body);
+  const result = await OrderServices.initiateStripePayment(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -61,33 +62,45 @@ const initiatePayment: RequestHandler = catchAsync(async (req, res) => {
     data: result, // { redirectUrl, orderId }
   });
 });
- 
+
 /**
- * POST /api/order/webhook/worldpay
+ * POST /api/order/webhook/stripe
  *
- * Called by Worldpay after a payment is processed.
- * Register this URL in your Worldpay dashboard under:
- *   Settings → Notifications → Webhook URL
+ * Called by Stripe after a payment event occurs.
+ * Register this URL in your Stripe Dashboard:
+ *   Developers → Webhooks → Add endpoint
+ *   URL: https://yourdomain.com/api/order/webhook/stripe
+ *   Events: checkout.session.completed, checkout.session.expired
  *
- * ⚠️  Do NOT add auth middleware to this route.
- *     Worldpay will not send auth headers.
- *     Verify authenticity via Worldpay's HMAC signature instead (see docs).
+ * ⚠️  IMPORTANT:
+ *   - Do NOT add auth middleware to this route.
+ *   - This route must use express.raw({ type: 'application/json' })
+ *     (already handled in the router) so Stripe's signature check works.
+ *   - Stripe expects a 200 response — anything else triggers a retry.
  */
-const worldpayWebhook: RequestHandler = catchAsync(async (req, res) => {
-  // Optional: verify Worldpay HMAC signature here
-  // const signature = req.headers['x-worldpay-signature'];
-  // verifyWorldpaySignature(signature, req.rawBody);
- 
-  await OrderServices.handleWorldpayWebhook(req.body);
-  // Worldpay expects a 200 response — anything else triggers a retry
-  res.status(200).json({ received: true });
-});
- 
+const stripeWebhook: RequestHandler = async (req, res) => {
+  const signature = req.headers["stripe-signature"] as string;
+
+  if (!signature) {
+    res.status(400).json({ error: "Missing Stripe signature header" });
+    return;
+  }
+
+  try {
+    // req.body here is a raw Buffer (because of express.raw middleware in router)
+    await OrderServices.handleStripeWebhook(req.body as Buffer, signature);
+    res.status(200).json({ received: true });
+  } catch (error: any) {
+    console.error("Stripe webhook error:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+};
+
 /**
  * GET /api/order/payment-status/:id
  *
- * Lightweight poll endpoint for the frontend success page.
- * Returns just the paymentStatus field so the page knows when to stop polling.
+ * Lightweight poll endpoint for the frontend /payment/success page.
+ * Returns paymentStatus so the frontend knows when to stop polling.
  * Requires auth middleware.
  */
 const getPaymentStatus: RequestHandler = catchAsync(async (req, res) => {
@@ -100,14 +113,13 @@ const getPaymentStatus: RequestHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
- 
+
 export const OrderControllers = {
   getAllOrder,
   getSingleOrder,
   updateOrder,
   createOrder,
-  initiatePayment,    // ← NEW
-  worldpayWebhook,    // ← NEW
-  getPaymentStatus,   // ← NEW
+  initiatePayment,  // ← STEP 1: create pending order + Stripe session
+  stripeWebhook,    // ← STEP 2: Stripe calls this after payment
+  getPaymentStatus, // ← STEP 3: frontend polls this to confirm payment
 };
- 

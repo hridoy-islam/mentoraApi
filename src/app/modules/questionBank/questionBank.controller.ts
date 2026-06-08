@@ -46,10 +46,23 @@ const createQuestionBank: RequestHandler = catchAsync(async (req, res) => {
   });
 });
 
+const deleteQuestionBank = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await QuestionBankServices.deleteSingleQuestionBankFromDB(id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "QuestionBank is deleted succesfully",
+    data: result,
+  });
+});
+
+
 export const QuestionBankControllers = {
   getAllQuestionBank,
   getSingleQuestionBank,
   updateQuestionBank,
-  createQuestionBank
+  createQuestionBank,
+  deleteQuestionBank
   
 };

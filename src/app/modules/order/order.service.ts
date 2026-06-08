@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import axios from "axios";
+import Stripe from "stripe";
 import QueryBuilder from "../../builder/QueryBuilder";
 import AppError from "../../errors/AppError";
 import { Order } from "./order.model";
@@ -7,22 +7,69 @@ import { TOrder } from "./order.interface";
 import { OrderSearchableFields } from "./order.constant";
 import { CourseLicense } from "../courseLicense/courseLicense.model";
 import { EnrolledCourse } from "../enrolledCourse/enrolledCourse.model";
+import moment from "moment";
+import mongoose from "mongoose";
 
-// ─── Worldpay Config ──────────────────────────────────────────────────────────
-// Sandbox:  https://try.access.worldpay.com
-// Live:     https://access.worldpay.com
-const WORLDPAY_BASE_URL =
-  process.env.WORLDPAY_BASE_URL || "https://try.access.worldpay.com";
-const WORLDPAY_SERVICE_KEY = process.env.WORLDPAY_SERVICE_KEY!;
+// ─── Stripe Config ────────────────────────────────────────────────────────────
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY ||
+    "sk_test_51TUmfa2OKOannx4pxgpzleHEADjWlFbEo5ClfCY7haqUOs4eXo3aX8lDifJ3CtYnaBLVPXX7ylvQo2GBMiEcofHv00vOJk9X0D"
+);
+
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-/** Base64-encode the service key for Basic Auth */
-const worldpayAuthHeader = () =>
-  `Basic ${Buffer.from(`${WORLDPAY_SERVICE_KEY}:`).toString("base64")}`;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface ShippingDetails {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+}
 
-/** Enroll student courses after confirmed payment */
+interface InitiatePaymentPayload extends Partial<TOrder> {
+  shippingDetails?: ShippingDetails;
+  items?: Array<{
+    courseId: any;
+    quantity: number;
+    unitPrice: number;
+    subTotal: number;
+    title?: string;
+  }>;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Guard: throw if a student already has ANY of the requested courses enrolled.
+ */
+const assertStudentNotDuplicateEnrollment = async (
+  studentId: string,
+  items: Array<{ courseId: string }>
+) => {
+  const courseIds = items.map((i) => i.courseId);
+
+  const existing = await EnrolledCourse.find({
+    studentId: new mongoose.Types.ObjectId(studentId),
+    courseId: { $in: courseIds.map((id) => new mongoose.Types.ObjectId(id)) },
+  }).select("courseId");
+
+  if (existing.length > 0) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      `You have already enrolled in the following course(s). Please remove them from your cart.`
+    );
+  }
+};
+
+/**
+ * Enroll student in all purchased courses.
+ * Called only after payment is confirmed via webhook.
+ */
 const enrollStudentCourses = async (order: any) => {
   for (const item of order.items || []) {
     await EnrolledCourse.create({
@@ -36,32 +83,81 @@ const enrollStudentCourses = async (order: any) => {
   }
 };
 
-/** Create company course licenses after confirmed payment */
-const createCompanyLicenses = async (order: any) => {
+/**
+ * Upsert company course licenses after confirmed payment.
+ */
+const upsertCompanyLicenses = async (order: any) => {
   for (const item of order.items || []) {
-    await CourseLicense.create({
+    const existingLicense = await CourseLicense.findOne({
       companyId: order.buyerId,
       courseId: item.courseId,
-      orderId: order._id,
-      totalSeats: item.quantity,
-      usedSeats: 0,
-      isActive: true,
     });
+
+    if (existingLicense) {
+      const logEntry = {
+        orderId: order._id,
+        seats: item.quantity,
+        message: `Added ${item.quantity} seat(s) via order ${order._id}.`,
+      };
+
+      await CourseLicense.findByIdAndUpdate(
+        existingLicense._id,
+        {
+          $inc: { totalSeats: item.quantity },
+          $push: {
+            orderIds: order._id,
+            logs: logEntry,
+          },
+        },
+        { new: true, runValidators: true }
+      );
+    } else {
+      const logEntry = {
+        orderId: order._id,
+        seats: item.quantity,
+        message:  `Course purchased with ${item.quantity} seat(s) via order ${order._id}.`,
+      };
+
+      await CourseLicense.create({
+        companyId: order.buyerId,
+        courseId: item.courseId,
+        orderId: order._id,
+        orderIds: [order._id],
+        totalSeats: item.quantity,
+        usedSeats: 0,
+        isActive: true,
+        logs: [logEntry],
+      });
+    }
   }
 };
 
 // ─── Service Functions ────────────────────────────────────────────────────────
 
 const getAllOrderFromDB = async (query: Record<string, unknown>) => {
+  const queryObj = { ...query };
+  const filterQuery: Record<string, any> = {};
+
+  if (queryObj.year) {
+    const year = Number(queryObj.year);
+    filterQuery.createdAt = {
+      $gte: moment.utc(`${year}-01-01`).startOf("year").toDate(),
+      $lte: moment.utc(`${year}-01-01`).endOf("year").toDate(),
+    };
+    delete queryObj.year;
+  }
+
   const OrderQuery = new QueryBuilder(
-    Order.find().populate("buyerId", "name").populate({
-      path: "items.courseId",
-      select: "title",
-    }),
-    query,
+    Order.find(filterQuery)
+      .populate("buyerId", "name")
+      .populate({
+        path: "items.courseId",
+        select: "title",
+      }),
+    queryObj
   )
     .search(OrderSearchableFields)
-    .filter(query)
+    .filter(queryObj)
     .sort()
     .paginate()
     .fields();
@@ -91,183 +187,221 @@ const updateOrderIntoDB = async (id: string, payload: Partial<TOrder>) => {
   return result;
 };
 
-/**
- * STEP 1 — Called when user clicks "Pay Now" on the checkout page.
- *
- * 1. Creates a PENDING order in the database.
- * 2. Requests a Hosted Payment Page session from Worldpay.
- * 3. Returns the Worldpay redirect URL to the frontend.
- *
- * The frontend then does: window.location.href = redirectUrl
- */
-const initiateWorldpayPayment = async (
-  payload: Partial<TOrder> & { shippingDetails?: Record<string, string> },
-) => {
-  const { totalAmount, shippingDetails } = payload;
+// ─── Stripe Payment ───────────────────────────────────────────────────────────
+
+const initiateStripePayment = async (payload: InitiatePaymentPayload) => {
+  const { totalAmount, shippingDetails, items, role, buyerId, discount, couponCode } = payload;
+if (role === "student") {
+  const hasMultipleQuantity = items?.some((item) => item.quantity > 1);
+
+  if (hasMultipleQuantity) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You can only purchase one access per course. Please adjust the quantity for each course to 1."
+    );
+  }
+}
 
   if (!totalAmount || totalAmount <= 0) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid order amount");
   }
 
-  // 1. Persist a pending order so we have an ID to track
-  const order = await Order.create({
-    ...payload,
-    paymentStatus: "pending",
-  });
+  if (!items || items.length === 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Order must contain at least one item");
+  }
 
+   if (role === "student") {}
+
+  // ── Student duplicate-enrollment guard ──────────────────────────────────────
+  if (role === "student" && buyerId) {
+    await assertStudentNotDuplicateEnrollment(buyerId.toString(), items);
+  }
+
+  // ── Build the order document including shippingDetails ─────────────────────
+  const orderDoc = {
+    buyerId,
+    role,
+    items: items.map(({ title: _title, ...item }) => item), // strip UI-only `title` field
+    totalAmount,
+    discount: discount ?? 0,
+    couponCode: couponCode ?? null,
+    paymentStatus: "pending" as const,
+    ...(shippingDetails && { shippingDetails }),
+  };
+
+  const order = await Order.create(orderDoc);
   const orderId = order._id.toString();
 
-  // 2. Create a Worldpay Hosted Payment Page session
-  //    Docs: https://developer.worldpay.com/docs/access-worldpay/hpp
   try {
-    const worldpayRes = await axios.post(
-      `${WORLDPAY_BASE_URL}/hpp/sessions`,
-      {
-        transactionReference: orderId, // echoed back in webhook
-        merchant: {
-          entity: "default", // replace with your Worldpay merchant entity
-        },
-        instruction: {
-          narrative: {
-            line1: "Course Purchase",
+    // ── Build Stripe line_items ───────────────────────────────────────────────
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
+      (item) => ({
+        price_data: {
+          currency: "gbp",
+          product_data: {
+            name: item.title || `Course (${item.courseId})`,
           },
-          value: {
-            currency: "GBP", // ← change to match your Worldpay account currency
-            amount: Math.round(totalAmount * 100), // pence / cents (minor units)
-          },
+          unit_amount: Math.round(item.unitPrice * 100),
         },
-        customer: {
-          // Pre-fill Worldpay's hosted form with billing details
-          ...(shippingDetails?.email && { email: shippingDetails.email }),
-          ...(shippingDetails?.fullName && {
-            billingAddress: {
-              firstName: shippingDetails.fullName.split(" ")[0] || "",
-              lastName:
-                shippingDetails.fullName.split(" ").slice(1).join(" ") || "",
-              address1: shippingDetails.address || "",
-              city: shippingDetails.city || "",
-              state: shippingDetails.state || "",
-              postalCode: shippingDetails.zipCode || "",
-              countryCode: shippingDetails.country || "",
+        quantity: item.quantity,
+      })
+    );
+
+    // Optional discount line item (negative amount)
+    if (discount && discount > 0) {
+      const subtotalSum = items.reduce((sum, item) => sum + item.subTotal, 0);
+      const discountAmount = subtotalSum * discount;
+
+      lineItems.push({
+        price_data: {
+          currency: "gbp",
+          product_data: {
+            name: `Discount (${(discount * 100).toFixed(0)}%)`,
+          },
+          unit_amount: -Math.round(discountAmount * 100),
+        },
+        quantity: 1,
+      });
+    }
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: "payment",
+      line_items: lineItems,
+      ...(shippingDetails?.email && { customer_email: shippingDetails.email }),
+      metadata: {
+        orderId,
+        buyerId: buyerId?.toString() || "",
+        role: role || "",
+      },
+      success_url: `${FRONTEND_URL}/payment/success?orderId=${orderId}`,
+      cancel_url: `${FRONTEND_URL}`,
+      billing_address_collection: "auto",
+      ...(shippingDetails && {
+        payment_intent_data: {
+          description: "Course Purchase",
+          metadata: { orderId },
+          ...(shippingDetails.address && {
+            shipping: {
+              name: shippingDetails.fullName || "",
+              address: {
+                line1: shippingDetails.address,
+                city: shippingDetails.city || "",
+                state: shippingDetails.state || "",
+                postal_code: shippingDetails.zipCode || "",
+                country: shippingDetails.country || "",
+              },
             },
           }),
         },
-        successUrl: `${FRONTEND_URL}/payment/success?orderId=${orderId}`,
-        failureUrl: `${FRONTEND_URL}/payment/failure?orderId=${orderId}`,
-        pendingUrl: `${FRONTEND_URL}/payment/pending?orderId=${orderId}`,
-        cancelUrl: `${FRONTEND_URL}/checkout`,
-      },
-      {
-        headers: {
-          Authorization: worldpayAuthHeader(),
-          "Content-Type": "application/json",
-        },
-      },
-    );
+      }),
+    };
 
-    const redirectUrl =
-      worldpayRes.data?.redirectUrl || worldpayRes.data?.links?.hpp?.href;
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
-    if (!redirectUrl) {
-      // Clean up the pending order if Worldpay doesn't give us a URL
+    if (!session.url) {
       await Order.findByIdAndDelete(orderId);
       throw new AppError(
         httpStatus.BAD_GATEWAY,
-        "Failed to retrieve Worldpay payment URL",
+        "Failed to retrieve Stripe checkout URL"
       );
     }
 
-    return { redirectUrl, orderId };
-  } catch (err: any) {
-    // Re-throw AppErrors as-is
-    if (err instanceof AppError) throw err;
+    await Order.findByIdAndUpdate(orderId, { stripeSessionId: session.id });
 
-    // Clean up pending order on Worldpay API failure
+    return { redirectUrl: session.url, orderId };
+  } catch (error: any) {
+    // Clean up the pending order if Stripe session creation fails
     await Order.findByIdAndDelete(orderId);
-
-    const worldpayMsg =
-      err?.response?.data?.message || err?.message || "Worldpay request failed";
-    throw new AppError(httpStatus.BAD_GATEWAY, worldpayMsg);
+    console.error("STRIPE ERROR:", error.message);
+    throw new AppError(
+      httpStatus.BAD_GATEWAY,
+      error.message || "Payment initiation failed"
+    );
   }
 };
 
-/**
- * STEP 2 — Called by Worldpay's webhook after the payment is processed.
- *
- * Worldpay will POST to: POST /api/order/webhook/worldpay
- * (Register this URL in your Worldpay dashboard under Notifications)
- *
- * On SUCCESS  → marks order as "paid", enrolls students / creates licenses.
- * On FAILURE  → marks order as "failed".
- *
- * Important: This route must NOT have auth middleware.
- */
-const handleWorldpayWebhook = async (webhookPayload: any) => {
-  // Worldpay sends different event shapes depending on your account config.
-  // Adapt the field names below to match your actual webhook payload.
-  const {
-    transactionReference, // this is the orderId we passed in initiateWorldpayPayment
-    orderCode, // alternative field name Worldpay sometimes uses
-    paymentStatus, // "SUCCESS" | "FAILED" | "PENDING"
-    outcome, // alternative: "authorized" | "refused"
-    transactionIdentifier,
-    orderDetails,
-  } = webhookPayload;
+// ─── Stripe Webhook ───────────────────────────────────────────────────────────
 
-  const orderId = transactionReference || orderCode || orderDetails?.orderCode;
+const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
-  if (!orderId) {
-    console.error("Worldpay webhook: missing order reference", webhookPayload);
-    return { received: true };
+  if (!webhookSecret) {
+    console.error("STRIPE_WEBHOOK_SECRET is not set in .env");
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Webhook secret not configured"
+    );
   }
 
-  const order = await Order.findById(orderId);
-  if (!order) {
-    console.error(`Worldpay webhook: order ${orderId} not found`);
-    return { received: true };
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  } catch (err: any) {
+    console.error("Stripe webhook signature verification failed:", err.message);
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Webhook signature error: ${err.message}`
+    );
   }
 
-  // Normalise the success condition across both Worldpay API flavours
-  const isSuccess = paymentStatus === "SUCCESS" || outcome === "authorized";
+  console.log(`📩 Stripe event received: ${event.type}`);
 
-  const isFailed =
-    paymentStatus === "FAILED" ||
-    paymentStatus === "REFUSED" ||
-    outcome === "refused";
+  // ── Payment succeeded ──────────────────────────────────────────────────────
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const orderId = session.metadata?.orderId;
 
-  if (isSuccess && order.paymentStatus !== "paid") {
-    // Mark paid and store the transaction ID
-    order.paymentStatus = "paid";
-    order.transactionId =
-      transactionIdentifier ||
-      webhookPayload?.paymentResponse?.transactionIdentifier;
-    await order.save();
-
-    // Fulfill the order
-    if (order.role === "student") {
-      await enrollStudentCourses(order);
-    }
-    if (order.role === "company") {
-      await createCompanyLicenses(order);
+    if (!orderId) {
+      console.error("Stripe webhook: missing orderId in session metadata");
+      return { received: true };
     }
 
-    console.log(`✅ Order ${orderId} marked as paid.`);
-  } else if (isFailed && order.paymentStatus !== "failed") {
-    order.paymentStatus = "failed";
-    await order.save();
-    console.log(`❌ Order ${orderId} marked as failed.`);
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.error(`Stripe webhook: order ${orderId} not found in DB`);
+      return { received: true };
+    }
+
+    // Guard against duplicate webhook delivery
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "paid";
+      order.transactionId = session.payment_intent as string;
+      await order.save();
+
+      if (order.role === "student") {
+        await enrollStudentCourses(order);
+      }
+
+      if (order.role === "company") {
+        await upsertCompanyLicenses(order);
+      }
+
+      console.log(`✅ Order ${orderId} marked as paid via Stripe.`);
+    } else {
+      console.log(`ℹ️  Order ${orderId} already paid — skipping duplicate.`);
+    }
+  }
+
+  // ── Session expired ────────────────────────────────────────────────────────
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const orderId = session.metadata?.orderId;
+
+    if (orderId) {
+      await Order.findByIdAndUpdate(orderId, { paymentStatus: "failed" });
+      console.log(`❌ Order ${orderId} marked as failed (session expired).`);
+    }
   }
 
   return { received: true };
 };
 
-/**
- * Lightweight poll endpoint — called by the frontend's success page every
- * few seconds to check whether the webhook has confirmed payment yet.
- */
+// ─── Payment Status ───────────────────────────────────────────────────────────
+
 const getOrderPaymentStatus = async (id: string) => {
   const order = await Order.findById(id).select(
-    "paymentStatus transactionId createdAt",
+    "paymentStatus transactionId createdAt"
   );
   if (!order) {
     throw new AppError(httpStatus.NOT_FOUND, "Order not found");
@@ -275,10 +409,16 @@ const getOrderPaymentStatus = async (id: string) => {
   return order;
 };
 
-// Legacy direct-create (kept for admin use)
+// ─── Legacy direct-create (admin use) ────────────────────────────────────────
+
 const createOrderIntoDB = async (payload: Partial<TOrder>) => {
-  const order = await Order.create(payload);
   const { buyerId, role, items } = payload;
+
+  if (role === "student" && buyerId && items && items.length > 0) {
+    await assertStudentNotDuplicateEnrollment(buyerId.toString(), items);
+  }
+
+  const order = await Order.create(payload);
 
   if (role === "student") {
     for (const item of items || []) {
@@ -294,27 +434,20 @@ const createOrderIntoDB = async (payload: Partial<TOrder>) => {
   }
 
   if (role === "company") {
-    for (const item of items || []) {
-      await CourseLicense.create({
-        companyId: payload.buyerId,
-        courseId: item.courseId,
-        orderId: order._id,
-        totalSeats: item.quantity,
-        usedSeats: 0,
-        isActive: true,
-      });
-    }
+    await upsertCompanyLicenses({ ...order.toObject(), buyerId, items });
   }
 
   return order;
 };
+
+// ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const OrderServices = {
   getAllOrderFromDB,
   getSingleOrderFromDB,
   updateOrderIntoDB,
   createOrderIntoDB,
-  initiateWorldpayPayment, // ← NEW: step 1 — create pending order + get redirect URL
-  handleWorldpayWebhook, // ← NEW: step 2 — called by Worldpay after payment
-  getOrderPaymentStatus, // ← NEW: step 3 — polled by frontend success page
+  initiateStripePayment,
+  handleStripeWebhook,
+  getOrderPaymentStatus,
 };

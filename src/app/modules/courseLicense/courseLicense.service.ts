@@ -45,7 +45,7 @@ let totalOrderAmount = 0;
 };
 
 const getSingleCourseLicenseFromDB = async (id: string) => {
-  const result = await CourseLicense.findById(id).populate("instructorId");
+  const result = await CourseLicense.findById(id).populate("courseId","title image");
   return result;
 };
 

@@ -64,6 +64,7 @@ export const QuestionBankServices = {
   getAllQuestionBankFromDB,
   getSingleQuestionBankFromDB,
   updateQuestionBankIntoDB,
-  createQuestionBankIntoDB
+  createQuestionBankIntoDB,
+  deleteSingleQuestionBankFromDB
   
 };

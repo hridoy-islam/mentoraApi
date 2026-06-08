@@ -11,6 +11,9 @@ const AnswerRecordSchema = new Schema<TAnswerRecord>(
       type: [String],
       required: true,
     },
+    correctAnswers: {
+      type: [String],
+    },
     isCorrect: {
       type: Boolean,
      

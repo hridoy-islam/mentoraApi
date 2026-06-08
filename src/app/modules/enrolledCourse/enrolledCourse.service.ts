@@ -6,18 +6,18 @@ import { TEnrolledCourse } from "./enrolledCourse.interface";
 import { EnrolledCourseSearchableFields } from "./enrolledCourse.constant";
 import { CourseLicense } from "../courseLicense/courseLicense.model";
 import mongoose from "mongoose";
+import { Course } from "../course/course.model";
+import { User } from "../user/user.model";
 
 const getAllEnrolledCourseFromDB = async (query: Record<string, unknown>) => {
-const EnrolledCourseQuery = new QueryBuilder(
-    EnrolledCourse.find()
-  .populate('studentId', 'name email')
-  .populate({
-    path: 'courseId',
-    select: 'title  categoryId slug image',
-    
-  }),
-    query
-  ).search(EnrolledCourseSearchableFields)
+  const EnrolledCourseQuery = new QueryBuilder(
+    EnrolledCourse.find().populate("studentId", "name email").populate({
+      path: "courseId",
+      select: "title  categoryId slug image",
+    }),
+    query,
+  )
+    .search(EnrolledCourseSearchableFields)
     .filter(query)
     .sort()
     .paginate()
@@ -37,12 +37,18 @@ const getSingleEnrolledCourseFromDB = async (id: string) => {
   return result;
 };
 
-const updateEnrolledCourseIntoDB = async (id: string, payload: Partial<TEnrolledCourse>) => {
+const updateEnrolledCourseIntoDB = async (
+  id: string,
+  payload: Partial<TEnrolledCourse>,
+) => {
   const enrolledCourse = await EnrolledCourse.findById(id);
   if (!enrolledCourse) {
     throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
   }
-
+  if (payload.progress === 100) {
+    payload.status = "completed";
+    payload.completedDate = new Date();
+  }
   const result = await EnrolledCourse.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -51,8 +57,9 @@ const updateEnrolledCourseIntoDB = async (id: string, payload: Partial<TEnrolled
   return result;
 };
 
-
-const createEnrolledCourseIntoDB = async (payload: Partial<TEnrolledCourse>) => {
+const createEnrolledCourseIntoDB = async (
+  payload: Partial<TEnrolledCourse>,
+) => {
   const session = await mongoose.startSession();
 
   try {
@@ -65,27 +72,49 @@ const createEnrolledCourseIntoDB = async (payload: Partial<TEnrolledCourse>) => 
       }).session(session);
 
       if (isAlreadyEnrolled) {
-        throw new AppError(httpStatus.CONFLICT, "Student is already enrolled using this license");
+        throw new AppError(
+          httpStatus.CONFLICT,
+          "Student is already enrolled using this license",
+        );
       }
     }
 
     if (payload.licenseId) {
-      const license = await CourseLicense.findById(payload.licenseId).session(session);
+      const license = await CourseLicense.findById(payload.licenseId).session(
+        session,
+      );
 
       if (!license) {
         throw new AppError(httpStatus.NOT_FOUND, "License not found");
       }
 
       if (license.usedSeats >= license.totalSeats) {
-        throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          "No available seats remaining",
+        );
       }
+
+      const student = await User.findById(payload.studentId).select("name");
+      const course = await Course.findById(payload.courseId).select("title");
+
+      const message = `${student?.name ?? "User"} enrolled in ${
+        course?.title ?? "course"
+      }`;
 
       await CourseLicense.findByIdAndUpdate(
         payload.licenseId,
         {
           $inc: { usedSeats: 1 },
+          $push: {
+            staffEnrollmentLogs: {
+              userId: payload.studentId,
+              courseId: payload.courseId,
+              message,
+            },
+          },
         },
-        { session, new: true }
+        { session, new: true },
       );
     }
 
@@ -106,12 +135,9 @@ const createEnrolledCourseIntoDB = async (payload: Partial<TEnrolledCourse>) => 
   }
 };
 
-
-
 export const EnrolledCourseServices = {
   getAllEnrolledCourseFromDB,
   getSingleEnrolledCourseFromDB,
   updateEnrolledCourseIntoDB,
-  createEnrolledCourseIntoDB
-  
+  createEnrolledCourseIntoDB,
 };

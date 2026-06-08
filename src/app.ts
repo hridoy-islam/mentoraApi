@@ -24,11 +24,17 @@ pusher.trigger("my-channel", "my-event", {
   message: "hello world",
 });
 //parsers
-app.use(express.json());
+app.use(
+  "/api/order/webhook/stripe",
+  express.raw({ type: "application/json" })
+);
+
+app.use(express.json({ limit: "100mb" }));
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use("/uploads", express.static("uploads"));
 app.use(express.static('public'));
+
 
 // app.use((req, res, next) => {
 //   // Set the Access-Control-Allow-Origin header to allow requests from any origin
@@ -59,6 +65,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://mentoraedu.netlify.app",
+      "https://medicaretraining.co.uk"
     ],
     credentials: true,
   })
