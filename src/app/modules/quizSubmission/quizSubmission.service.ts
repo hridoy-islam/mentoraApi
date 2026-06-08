@@ -105,7 +105,7 @@ const createQuizSubmissionIntoDB = async (payload: Partial<TQuizSubmission>) => 
   // Evaluate raw answers
   const { evaluatedAnswers, totalScore, isPassed } = await evaluateAnswers(
     lessonId.toString(),
-    answers as { questionId: string; providedAnswer: string[] }[]
+    answers as any[]
   );
 
   // Upsert: if a submission already exists for this student + lesson, update it
@@ -150,7 +150,7 @@ const updateQuizSubmissionIntoDB = async (id: string, payload: Partial<TQuizSubm
 
     const { evaluatedAnswers, totalScore, isPassed } = await evaluateAnswers(
       lessonIdToUse,
-      payload.answers as { questionId: string; providedAnswer: string[] }[]
+      payload.answers as any[]
     );
 
     updatedData.answers = evaluatedAnswers as any;

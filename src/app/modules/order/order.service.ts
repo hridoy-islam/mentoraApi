@@ -12,8 +12,7 @@ import mongoose from "mongoose";
 
 // ─── Stripe Config ────────────────────────────────────────────────────────────
 const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY ||
-    "sk_test_51TUmfa2OKOannx4pxgpzleHEADjWlFbEo5ClfCY7haqUOs4eXo3aX8lDifJ3CtYnaBLVPXX7ylvQo2GBMiEcofHv00vOJk9X0D"
+  process.env.STRIPE_SECRET_KEY ||""
 );
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -234,7 +233,7 @@ if (role === "student") {
 
   try {
     // ── Build Stripe line_items ───────────────────────────────────────────────
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map(
+    const lineItems: any = items.map(
       (item) => ({
         price_data: {
           currency: "gbp",
@@ -248,15 +247,15 @@ if (role === "student") {
     );
 
     // Optional discount line item (negative amount)
-    if (discount && discount > 0) {
+    if (discount && Number(discount) > 0) {
       const subtotalSum = items.reduce((sum, item) => sum + item.subTotal, 0);
-      const discountAmount = subtotalSum * discount;
+      const discountAmount = subtotalSum * Number(discount);
 
       lineItems.push({
         price_data: {
           currency: "gbp",
           product_data: {
-            name: `Discount (${(discount * 100).toFixed(0)}%)`,
+            name: `Discount (${(Number(discount) * 100).toFixed(0)}%)`,
           },
           unit_amount: -Math.round(discountAmount * 100),
         },
@@ -264,7 +263,7 @@ if (role === "student") {
       });
     }
 
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    const sessionParams: any = {
       mode: "payment",
       line_items: lineItems,
       ...(shippingDetails?.email && { customer_email: shippingDetails.email }),
@@ -333,10 +332,10 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
     );
   }
 
-  let event: Stripe.Event;
+  let event: any;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody as any, signature, webhookSecret);
   } catch (err: any) {
     console.error("Stripe webhook signature verification failed:", err.message);
     throw new AppError(
@@ -349,7 +348,7 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
 
   // ── Payment succeeded ──────────────────────────────────────────────────────
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as any;
     const orderId = session.metadata?.orderId;
 
     if (!orderId) {
@@ -385,7 +384,7 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
 
   // ── Session expired ────────────────────────────────────────────────────────
   if (event.type === "checkout.session.expired") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    const session = event.data.object as any;
     const orderId = session.metadata?.orderId;
 
     if (orderId) {
@@ -415,7 +414,7 @@ const createOrderIntoDB = async (payload: Partial<TOrder>) => {
   const { buyerId, role, items } = payload;
 
   if (role === "student" && buyerId && items && items.length > 0) {
-    await assertStudentNotDuplicateEnrollment(buyerId.toString(), items);
+    await assertStudentNotDuplicateEnrollment(buyerId.toString(), items as any);
   }
 
   const order = await Order.create(payload);
