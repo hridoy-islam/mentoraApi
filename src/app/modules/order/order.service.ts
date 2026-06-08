@@ -12,7 +12,7 @@ import mongoose from "mongoose";
 
 // ─── Stripe Config ────────────────────────────────────────────────────────────
 const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY ||"");
+  process.env.STRIPE_SECRET_KEY as any);
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
