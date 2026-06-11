@@ -273,6 +273,7 @@ if (role === "student") {
       },
       success_url: `${FRONTEND_URL}/payment/success?orderId=${orderId}`,
       cancel_url: `${FRONTEND_URL}`,
+      
       billing_address_collection: "auto",
       ...(shippingDetails && {
         payment_intent_data: {
