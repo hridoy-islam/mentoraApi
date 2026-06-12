@@ -6,26 +6,36 @@ import { TLesson } from "./lesson.interface";
 import { LessonSearchableFields } from "./lesson.constant";
 
 const getAllLessonFromDB = async (query: Record<string, unknown>) => {
+  const isQuiz = query.isQuiz === "true" || query.isQuiz === true;
+  const { isQuiz: _, ...dbQuery } = query;
+
   const LessonQuery = new QueryBuilder(
     Lesson.find().populate({
-      path: 'importedQuestions',
-      select: '-correctAnswers -shortAnswer', 
+      path: "importedQuestions",
+      select: isQuiz ? "-correctAnswers -shortAnswer" : undefined,
     }),
-    query
+    dbQuery
   )
     .search(LessonSearchableFields)
-    .filter(query)
+    .filter(dbQuery)
     .sort()
     .paginate()
     .fields();
 
   const meta = await LessonQuery.countTotal();
-  const result = await LessonQuery.modelQuery;
+  const rawResult = await LessonQuery.modelQuery.lean();
 
-  return {
-    meta,
-    result,
-  };
+  const result = isQuiz
+    ? rawResult.map((lesson) => ({
+        ...lesson,
+        questions:
+          lesson.type === "quiz"
+            ? lesson.questions?.map(({ correctAnswers, shortAnswer, ...rest }) => rest)
+            : lesson.questions,
+      }))
+    : rawResult;
+
+  return { meta, result };
 };
 
 const getSingleLessonFromDB = async (id: string) => {
