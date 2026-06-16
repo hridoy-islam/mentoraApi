@@ -50,6 +50,10 @@ const QuizSubmissionSchema = new Schema<TQuizSubmission>(
       default: 0,
     },
     answers: [AnswerRecordSchema],
+    seenQuestions: {
+      type: [Schema.Types.ObjectId],
+      default: [],
+    },
     totalScore: {
       type: Number,
       required: true,

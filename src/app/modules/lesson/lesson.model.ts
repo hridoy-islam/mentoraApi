@@ -64,22 +64,7 @@ const LessonSchema = new Schema<TLesson>(
       totalMarks: { type: Number }, // total quiz marks
       passMarks: { type: Number }, // minimum passing score
 
-      // maxAttempts: { type: Number }, // how many retries allowed
-
-      // deductionRules: {
-      //   type: [
-      //     {
-      //       attempt: { type: Number, required: true }, // retry number: 2, 3, 4 etc.
-      //       deduction: { type: Number, required: true }, // marks deducted for this attempt
-      //       constantDeduction: { type: Boolean, default: false }, 
-      //     },
-      //   ],
-      //   default: undefined,
-      // },
-
-      // constantDeductionAfterMax: {
-      //   type: Number, default: 0
-      // },
+      
     },
   },
   {

@@ -25,6 +25,12 @@ router.patch(
 
   LessonControllers.updateLesson
 );
+router.get(
+  "/:id/quiz-questions",
+  auth("student"), 
+  LessonControllers.getQuizForStudent
+);
+
 router.patch(
   "/reorder/:id",
   auth("admin", "instructor"),

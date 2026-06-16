@@ -79,12 +79,28 @@ export const reorderLesson = catchAsync(async (req, res) => {
   });
 });
 
+
+const getQuizForStudent = catchAsync(async (req, res) => {
+  const { id: lessonId } = req.params;
+  const studentId = (req as any).user.userId; // Assuming you have user in request from auth middleware
+
+  const result = await LessonServices.getQuizForStudentFromDB(lessonId, studentId);
+  
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Quiz questions retrieved successfully",
+    data: result,
+  });
+});
+
 export const LessonControllers = {
   getAllLesson,
   getSingleLesson,
   updateLesson,
   createLesson,
   reorderLesson,
-  deleteLesson
+  deleteLesson,
+  getQuizForStudent
   
 };

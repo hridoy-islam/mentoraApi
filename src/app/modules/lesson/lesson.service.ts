@@ -4,6 +4,45 @@ import AppError from "../../errors/AppError";
 import { Lesson } from "./lesson.model";
 import { TLesson } from "./lesson.interface";
 import { LessonSearchableFields } from "./lesson.constant";
+import { QuizSubmission } from "../quizSubmission/quizSubmission.model";
+
+// The Fisher-Yates (Knuth) Shuffle Algorithm
+const shuffleArray = (array: any[]) => {
+  const newArr = [...array];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+};
+
+const getQuizForStudentFromDB = async (lessonId: string, studentId: string) => {
+  const lesson = await Lesson.findById(lessonId).populate("importedQuestions").lean();
+  if (!lesson || lesson.type !== "quiz") {
+    throw new AppError(httpStatus.NOT_FOUND, "Quiz not found");
+  }
+
+  // 1. Get history
+  const submission = await QuizSubmission.findOne({ lessonId, studentId }).lean();
+  const seenIds = submission?.seenQuestions?.map((id) => id.toString()) || [];
+
+  // 2. Filter available
+  const allQuestions = [...(lesson.questions || []), ...(lesson.importedQuestions || [])];
+  let availableQuestions = allQuestions.filter((q: any) => !seenIds.includes(q._id.toString()));
+
+  // 3. Reset if exhausted
+  if (availableQuestions.length === 0) {
+    availableQuestions = allQuestions;
+  }
+
+  // 4. Shuffle and slice
+  const shuffled = shuffleArray(availableQuestions);
+  const limit = lesson.quizConfig?.totalMarks || 5;
+  const selected = shuffled.slice(0, limit);
+
+  // 5. Sanitize
+  return selected.map(({ correctAnswers, shortAnswer, ...rest }) => rest);
+};
 
 const getAllLessonFromDB = async (query: Record<string, unknown>) => {
   const isQuiz = query.isQuiz === "true" || query.isQuiz === true;
@@ -122,6 +161,7 @@ export const LessonServices = {
   updateLessonIntoDB,
   createLessonIntoDB,
   reorderLessonFromDB,
-  deleteSingleLessonFromDB
+  deleteSingleLessonFromDB,
+  getQuizForStudentFromDB
   
 };

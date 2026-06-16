@@ -18,7 +18,7 @@ export type TQuizSubmission = {
   
   totalScore: number;         // Total marks achieved in this attempt
   isPassed: boolean;          // Evaluated against lesson.quizConfig.passMarks
-  
+  seenQuestions: Types.ObjectId[];
   startedAt?: Date;
   submittedAt: Date;
 };
