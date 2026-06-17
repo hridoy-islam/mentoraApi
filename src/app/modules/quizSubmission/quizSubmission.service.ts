@@ -16,9 +16,9 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: { questionId: 
   }
 
   // Calculate dynamic point metrics based on actual questions evaluated
-  const totalConfiguredMarks = lesson.quizConfig?.totalMarks || 5; 
-  const weightPerQuestion = providedAnswers.length > 0 
-    ? totalConfiguredMarks / providedAnswers.length 
+  const totalConfiguredMarks = lesson.quizConfig?.totalMarks || 5;
+  const weightPerQuestion = providedAnswers.length > 0
+    ? totalConfiguredMarks / providedAnswers.length
     : 0;
 
   const evaluatedAnswers = [];
@@ -42,7 +42,6 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: { questionId: 
       }
     }
 
-    // Fixed missing open-bracket syntax issue safely here
     const isCorrect =
       ans.providedAnswer.length === correctAnswers.length &&
       ([...ans.providedAnswer]).sort().every(
@@ -62,7 +61,18 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: { questionId: 
   }
 
   totalScore = Number(totalScore.toFixed(2));
-  const isPassed = totalScore >= totalConfiguredMarks / 2;
+
+  // Use the explicitly configured passMarks when present; otherwise fall
+  // back to 50% of totalConfiguredMarks so quizzes without a passMarks
+  // value still behave sensibly. Previously this always used the 50%
+  // fallback and silently ignored quizConfig.passMarks entirely, so any
+  // admin-set pass threshold (e.g. 4/5, 3/5) had no effect on isPassed.
+  const passThreshold =
+    typeof lesson.quizConfig?.passMarks === 'number'
+      ? lesson.quizConfig.passMarks
+      : totalConfiguredMarks / 2;
+
+  const isPassed = totalScore >= passThreshold;
 
   return { evaluatedAnswers, totalScore, isPassed };
 };
