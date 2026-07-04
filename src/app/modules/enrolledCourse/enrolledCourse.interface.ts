@@ -8,7 +8,7 @@ export interface TEnrolledCourse {
   // Who paid? 
   purchasedBy: Types.ObjectId; // Could be the Student themselves or a Company
   licenseId?: Types.ObjectId;  // Optional: If part of a company bulk license
-  
+  refId:string;
   status: "active" | "completed" | "dropped";
   progress: number;
   completedModules: Types.ObjectId[];
