@@ -9,6 +9,7 @@ import mongoose from "mongoose";
 import { Course } from "../course/course.model";
 import { User } from "../user/user.model";
 import { v4 as uuidv4 } from "uuid";
+import { sendEnrollmentEmail } from "../../utils/sendEnrollmentEmail";
 
 export const generateUniqueRefId = async (
   session?: mongoose.ClientSession,
@@ -94,87 +95,6 @@ const updateEnrolledCourseIntoDB = async (
 };
 
 
-
-
-
-// const createEnrolledCourseIntoDB = async (
-//   payload: Partial<TEnrolledCourse>,
-// ) => {
-//   const session = await mongoose.startSession();
-
-//   try {
-//     session.startTransaction();
-
-//     if (payload.licenseId && payload.studentId) {
-//       const isAlreadyEnrolled = await EnrolledCourse.findOne({
-//         studentId: payload.studentId,
-//         licenseId: payload.licenseId,
-//       }).session(session);
-
-//       if (isAlreadyEnrolled) {
-//         throw new AppError(
-//           httpStatus.CONFLICT,
-//           "Student is already enrolled using this license",
-//         );
-//       }
-//     }
-
-//     if (payload.licenseId) {
-//       const license = await CourseLicense.findById(payload.licenseId).session(
-//         session,
-//       );
-
-//       if (!license) {
-//         throw new AppError(httpStatus.NOT_FOUND, "License not found");
-//       }
-
-//       if (license.usedSeats >= license.totalSeats) {
-//         throw new AppError(
-//           httpStatus.BAD_REQUEST,
-//           "No available seats remaining",
-//         );
-//       }
-
-//       const student = await User.findById(payload.studentId).select("name");
-//       const course = await Course.findById(payload.courseId).select("title");
-
-//       const message = `${student?.name ?? "User"} enrolled in ${
-//         course?.title ?? "course"
-//       }`;
-
-//       await CourseLicense.findByIdAndUpdate(
-//         payload.licenseId,
-//         {
-//           $inc: { usedSeats: 1 },
-//           $push: {
-//             staffEnrollmentLogs: {
-//               userId: payload.studentId,
-//               courseId: payload.courseId,
-//               message,
-//             },
-//           },
-//         },
-//         { session, new: true },
-//       );
-//     }
-
-//     const result = await EnrolledCourse.create([payload], { session });
-
-//     if (!result.length) {
-//       throw new AppError(httpStatus.BAD_REQUEST, "Failed to enroll in course");
-//     }
-
-//     await session.commitTransaction();
-//     await session.endSession();
-
-//     return result[0];
-//   } catch (error) {
-//     await session.abortTransaction();
-//     await session.endSession();
-//     throw error;
-//   }
-// };
-
 const createEnrolledCourseIntoDB = async (
   payload: Partial<TEnrolledCourse>,
 ) => {
@@ -197,6 +117,9 @@ const createEnrolledCourseIntoDB = async (
       }
     }
 
+    let student: any = null;
+    let course: any = null;
+
     if (payload.licenseId) {
       const license = await CourseLicense.findById(payload.licenseId).session(
         session,
@@ -213,8 +136,8 @@ const createEnrolledCourseIntoDB = async (
         );
       }
 
-      const student = await User.findById(payload.studentId).select("name");
-      const course = await Course.findById(payload.courseId).select("title");
+      student = await User.findById(payload.studentId).select("name email");
+      course = await Course.findById(payload.courseId).select("title");
 
       const message = `${student?.name ?? "User"} enrolled in ${
         course?.title ?? "course"
@@ -248,6 +171,41 @@ const createEnrolledCourseIntoDB = async (
 
     await session.commitTransaction();
     await session.endSession();
+
+    // Send enrollment emails (non-blocking — fire and forget)
+    if (payload.licenseId) {
+      const license = await CourseLicense.findById(payload.licenseId)
+        .populate("companyId", "name email");
+
+      const company: any = license?.companyId;
+      const memberName = student?.name || "A member";
+      const courseTitle = course?.title || "a course";
+
+      if (student?.email) {
+        sendEnrollmentEmail(
+          student.email,
+          "enrollment-student",
+          "You're enrolled — start learning!",
+          {
+            memberName,
+            courseTitle,
+            companyName: company?.name || "Your organisation",
+          }
+        ).catch((err) => console.error("Failed to send enrollment email to member:", err));
+      }
+
+      if (company?.email) {
+        sendEnrollmentEmail(
+          company.email,
+          "enrollment-company",
+          `${memberName} has enrolled in ${courseTitle}`,
+          {
+            memberName,
+            courseTitle,
+          }
+        ).catch((err) => console.error("Failed to send enrollment email to company:", err));
+      }
+    }
 
     return result[0];
   } catch (error) {

@@ -1,44 +1,43 @@
 import nodemailer from "nodemailer";
 import ejs from "ejs";
-import config from "../config";
 
 export const sendEmail = async (
   to: string,
   template: string,
   subject: string,
-  name: string,
-  otp?: string,
-  title?: string,
-  extra?: Record<string, unknown>
+  data: Record<string, unknown>,
 ) => {
-  const transporter = nodemailer.createTransport({
+  // const transporter = nodemailer.createTransport({
+  //   host: "smtp.ionos.co.uk",
+  //   port: 465,
+  //   secure: true,
+  //   auth: {
+  //     user: "support@medicaretraining.co.uk",
+  //     pass: "Zadidsupriyo@2020",
+  //   },
+  // });
+const transporter = nodemailer.createTransport({
     host: "smtp.ionos.co.uk",
      port: 587,
      secure: false,
     auth: {
-      user: "noreply@medicaretraining.co.uk",
+      user: "support@medicaretraining.co.uk	",
       pass: "Zadidsupriyo@2020",
     },
   });
-    await transporter.verify();
+  await transporter.verify();
   console.log("SMTP Server is ready");
-
 
   try {
     const html = await ejs.renderFile(
       __dirname + "/../static/email_template/" + template + ".ejs",
-      {
-        otp: otp,
-        name: name,
-        title: title,
-        ...extra,
-      }
+      data,
     );
     const mailOptions = {
-      from: '"Medicare Training" <noreply@medicaretraining.co.uk>',
+      from: '"Medicare Training" <support@medicaretraining.co.uk	>',
       to,
       subject,
-      html: html,
+      html,
     };
 
     const info = await transporter.sendMail(mailOptions);

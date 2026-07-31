@@ -9,6 +9,7 @@ import { CourseLicense } from "../courseLicense/courseLicense.model";
 import { EnrolledCourse } from "../enrolledCourse/enrolledCourse.model";
 import moment from "moment";
 import mongoose from "mongoose";
+import { sendPaymentSuccessEmail } from "../../utils/sendPaymentSuccessEmail";
 
 // ─── Stripe Config ────────────────────────────────────────────────────────────
 const stripe = new Stripe(
@@ -127,6 +128,47 @@ const upsertCompanyLicenses = async (order: any) => {
         logs: [logEntry],
       });
     }
+  }
+};
+
+/**
+ * Send order confirmation email to the buyer.
+ */
+const sendOrderConfirmationEmail = async (order: any) => {
+  try {
+    await order.populate("buyerId", "+email name email");
+    await order.populate({ path: "items.courseId", select: "title" });
+
+    const buyer: any = order.buyerId;
+    if (!buyer?.email) {
+      console.error(`Order ${order._id}: buyer ${buyer?._id} has no email — skipping confirmation email`);
+      return;
+    }
+
+    const items = order.items.map((item: any) => ({
+      title: item.courseId?.title || `Course (${item.courseId})`,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      subTotal: item.subTotal,
+    }));
+
+    const subtotal = items.reduce((sum: number, i: any) => sum + i.subTotal, 0);
+    const discountRate = Number(order.discount) || 0;
+    const discountedAmount = subtotal * discountRate;
+
+    await sendPaymentSuccessEmail(buyer.email, {
+      name: buyer.name || "Valued Customer",
+      items,
+      subtotal,
+      discount: discountRate,
+      discountedAmount,
+      totalAmount: order.totalAmount,
+  transactionId: order.transactionId,
+    });
+
+    console.log(`📧 Confirmation email sent to ${buyer.email} for order ${order._id}`);
+  } catch (err: any) {
+    console.error(`Failed to send order confirmation email for order ${order._id}:`, err);
   }
 };
 
@@ -376,6 +418,8 @@ const handleStripeWebhook = async (rawBody: Buffer, signature: string) => {
         await upsertCompanyLicenses(order);
       }
 
+      await sendOrderConfirmationEmail(order);
+
       console.log(`✅ Order ${orderId} marked as paid via Stripe.`);
     } else {
       console.log(`ℹ️  Order ${orderId} already paid — skipping duplicate.`);
@@ -435,6 +479,8 @@ const createOrderIntoDB = async (payload: Partial<TOrder>) => {
   if (role === "company") {
     await upsertCompanyLicenses({ ...order.toObject(), buyerId, items });
   }
+
+  await sendOrderConfirmationEmail(order);
 
   return order;
 };

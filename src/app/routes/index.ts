@@ -13,6 +13,7 @@ import { EnrolledCourseRoutes } from "../modules/enrolledCourse/enrolledCourse.r
 import { OrderRoutes } from "../modules/order/order.route";
 import { CourseLicenseRoutes } from "../modules/courseLicense/courseLicense.route";
 import { QuizSubmissionRoutes } from "../modules/quizSubmission/quizSubmission.route";
+import { ContractRoutes } from "../modules/sendContractEmail/sendContractEmail.route";
 
 
 const router = Router();
@@ -72,9 +73,12 @@ const moduleRoutes = [
     path: "/quiz-submission",
     route: QuizSubmissionRoutes,
   },
+  {
+    path: "/contact",
+    route: ContractRoutes,
+  },
 
- 
- 
+  
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

@@ -57,7 +57,7 @@ const checkLogin = async (payload: TLogin, req: any) => {
     //     isUsed: false,
     //   });
 
-    //   const emailSubject = "Verify Your Mentora Account";
+    //   const emailSubject = "Verify Your Medicare Training Account";
     //   await sendEmail(
     //     foundUser.email,
     //     "verify_email",
@@ -243,7 +243,7 @@ const createUserIntoDB = async (payload: TCreateUser) => {
     await sendEmail(
       payload.email,
       "welcome_template",
-      "Welcome to Mentora",
+      "Welcome to Medicare Training",
       payload.name
     );
   } catch (error) {
@@ -266,7 +266,7 @@ const EmailSendOTP = async (email: string) => {
     otpExpiry,
     isUsed: false,
   });
-  const emailSubject = "Mentora OTP – Please Verify Your Account";
+  const emailSubject = "Medicare Training OTP – Please Verify Your Account";
 
   await sendEmail(email, "resend_otp", emailSubject, foundUser.name, otp);
 
@@ -359,7 +359,7 @@ const resetPassword = async (payload: { userId: string; password: string }) => {
     throw new AppError(httpStatus.NOT_FOUND, "This user is not found !");
   }
 
-  const emailSubject = "Your Mentora Account Password Has Been Changed";
+  const emailSubject = "Your Medicare Training Account Password Has Been Changed";
   user.password = payload.password;
   await user.save();
 

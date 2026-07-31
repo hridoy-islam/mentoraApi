@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title>Thank You for Contacting Us</title>
+
+  <style type="text/css">
+    @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
+
+    body {
+      width: 100% !important;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      -webkit-text-size-adjust: none;
+      background-color: #f2f4f6;
+      color: #51545e;
+      font-family: "Nunito Sans", Helvetica, Arial, sans-serif;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #333333;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    p {
+      margin: 0 0 18px;
+      font-size: 16px;
+      line-height: 1.7;
+      color: #51545e;
+    }
+
+    a {
+      color: #0f7cc0;
+      text-decoration: none;
+    }
+
+    .email-wrapper {
+      width: 100%;
+      background: #f2f4f6;
+      padding: 30px 0;
+    }
+
+    .email-body {
+      width: 570px;
+      margin: auto;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .logo {
+      text-align: center;
+      padding: 35px 20px 15px;
+    }
+
+    .logo img {
+      max-width: 220px;
+      height: auto;
+    }
+
+    .content {
+      padding: 20px 45px 45px;
+    }
+
+    .message-box {
+      background: #f4f4f7;
+      border-left: 4px solid #0f7cc0;
+      padding: 18px;
+      border-radius: 4px;
+      margin: 20px 0;
+      font-style: italic;
+    }
+
+    .footer {
+      text-align: left;
+      padding: 30px 40px;
+      font-size: 13px;
+      color: #777777;
+      border-top: 1px solid #e5e7eb;
+      background: #fafafa;
+      line-height: 1.8;
+    }
+
+    .footer strong {
+      color: #444444;
+    }
+
+    .footer a {
+      color: #0f7cc0;
+    }
+
+    @media only screen and (max-width: 600px) {
+      .email-body {
+        width: 100% !important;
+      }
+
+      .content {
+        padding: 25px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <table class="email-wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td align="center">
+
+        <table class="email-body" cellpadding="0" cellspacing="0" role="presentation">
+
+          <!-- Logo -->
+          <tr>
+            <td class="logo">
+              <a href="https://medicaretraining.co.uk/" target="_blank">
+                <img
+                  src="https://medicaretraining.co.uk/logo.png"
+                  alt="Medicare Training"
+                />
+              </a>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td class="content">
+              <h1>Thank you for reaching out, <%= name %>!</h1>
+
+              <p>
+                We have successfully received your message. Our team will review
+                your enquiry and respond as soon as possible.
+              </p>
+
+             
+
+              <p>
+                We typically reply within <strong>24 business hours</strong>.
+                Thank you for choosing Medicare Training.
+              </p>
+
+              <p>
+                Best regards,<br />
+                <strong>Medicare Training</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="footer">
+              <strong>Medicare Training</strong><br />
+              <a href="mailto:support@medicaretraining.co.uk">support@medicaretraining.co.uk</a><br />
+              <a href="https://medicaretraining.co.uk/" target="_blank">medicaretraining.co.uk</a><br /><br />
+              <span style="color: #999999; font-size: 12px;">
+                &copy; <%= new Date().getFullYear() %> Medicare Training. All rights reserved.
+              </span>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
