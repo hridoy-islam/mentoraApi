@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>Staff Course Completion</title>
+  <style type="text/css">
+    @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
+    body { width: 100% !important; height: 100%; margin: 0; padding: 0; -webkit-text-size-adjust: none; background: #f2f4f6; font-family: "Nunito Sans", Helvetica, Arial, sans-serif; color: #51545e; }
+    h1 { margin: 0 0 20px; color: #333; font-size: 24px; font-weight: 700; }
+    p { font-size: 16px; line-height: 1.7; margin: 0 0 18px; }
+    a { color: #283891; text-decoration: none; }
+    .wrapper { width: 100%; padding: 30px 0; background: #f2f4f6; }
+    .container { width: 570px; margin: auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .logo { text-align: center; padding: 35px 20px 15px; }
+    .logo img { max-width: 220px; height: auto; }
+    .content { padding: 20px 40px 40px; }
+    .badge { display: inline-block; padding: 6px 16px; font-size: 14px; font-weight: 700; border-radius: 20px; margin-bottom: 20px; }
+    .badge-green { background: #283891; color: #ffffff; }
+    .info-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .info-table td { border: 1px solid #e5e7eb; padding: 12px; font-size: 14px; }
+    .info-table .label { background: #f8fafc; font-weight: 700; width: 160px; }
+    .button { display: inline-block; background: #283891; color: #ffffff !important; font-weight: 700; font-size: 15px; text-decoration: none; padding: 13px 28px; border-radius: 6px; margin: 10px 0 4px; }
+    .footer { text-align: left; padding: 30px 40px; font-size: 13px; color: #777; border-top: 1px solid #e5e7eb; background: #fafafa; line-height: 1.8; }
+    .footer strong { color: #444; }
+    @media only screen and (max-width: 600px) { .container { width: 100% !important; } .content { padding: 25px; } .info-table .label { width: 110px; } }
+  </style>
+</head>
+<body>
+  <table class="wrapper" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td align="center">
+        <table class="container" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td class="logo">
+              <a href="https://medicaretraining.co.uk/" target="_blank">
+                <img src="https://medicaretraining.co.uk/logo.png" alt="Medicare Training" />
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="content">
+              <span class="badge badge-green">Course Completion</span>
+              <h1>Hello, <%= name %>!</h1>
+              <p>
+                Your employee <strong><%= memberName %></strong> has successfully completed the
+                <strong><%= courseTitle %></strong> course.
+              </p>
+              <table class="info-table" role="presentation">
+                <tr><td class="label">Employee</td><td><%= memberName %></td></tr>
+                <tr><td class="label">Course</td><td><%= courseTitle %></td></tr>
+                
+              </table>
+              <p style="margin-top: 25px;">
+The completion certificate is now available. You can review and access it from the staff member’s Enrolled Courses page within your company portal.              </p>
+            
+              <p>Best regards,<br /><strong>Medicare Training</strong></p>
+            </td>
+          </tr>
+          <tr>
+            <td class="footer">
+              <strong>Medicare Training</strong><br />
+              <a href="mailto:support@medicaretraining.co.uk">support@medicaretraining.co.uk</a><br />
+              <a href="https://medicaretraining.co.uk/" target="_blank">medicaretraining.co.uk</a><br /><br />
+              <span style="color: #999; font-size: 12px;">&copy; <%= new Date().getFullYear() %> Medicare Training. All rights reserved.</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

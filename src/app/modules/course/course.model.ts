@@ -5,7 +5,8 @@ const CourseSchema = new Schema<TCourse>(
   {
     title: { type: String,  },
     slug:{type:String},
-    description: { type: String,  },
+    courseOverview: { type: String  },
+    description: { type: String },
     categoryId: { type: Schema.Types.ObjectId, ref: "Category",  },
     image: { type: String,  },
     instructorId: { type: Schema.Types.ObjectId, ref: "User",  },
@@ -19,6 +20,12 @@ const CourseSchema = new Schema<TCourse>(
     resources: { type: Number },
     learningPoints: [{ type: String }],
     requirements: [{ type: String }],
+     faq: [
+      {
+        question: { type: String },
+        answer: { type: String },
+      },
+    ],
     status: { type: String, enum: ["block", "active"], default: "active" },
   },
   {

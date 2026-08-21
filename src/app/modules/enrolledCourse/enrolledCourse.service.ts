@@ -10,6 +10,8 @@ import { Course } from "../course/course.model";
 import { User } from "../user/user.model";
 import { v4 as uuidv4 } from "uuid";
 import { sendEnrollmentEmail } from "../../utils/sendEnrollmentEmail";
+import { sendCompletionEmail } from "../../utils/sendCompletionEmail";
+import config from "../../config";
 
 export const generateUniqueRefId = async (
   session?: mongoose.ClientSession,
@@ -74,6 +76,67 @@ const getSingleEnrolledCourseFromDB = async (id: string) => {
   return result;
 };
 
+// Sends course-completion emails. Always emails the student; when the course
+// was provided via a company license, the company user is also notified.
+const sendCompletionEmails = async (enrolledCourse: any) => {
+  const student = await User.findById(enrolledCourse.studentId).select(
+    "name email",
+  );
+  const course = await Course.findById(enrolledCourse.courseId).select("title");
+
+  if (!student?.email) return;
+
+  const memberName = student.name || "A member";
+  const courseTitle = course?.title || "a course";
+  const refId = enrolledCourse.refId || "";
+  const certificateUrl = `${config.frontend_url}/student/certificates`;
+
+  // License case: resolve the company user so both the student and the
+  // company get notified.
+  let company: any = null;
+  if (enrolledCourse.licenseId) {
+    const license = await CourseLicense.findById(enrolledCourse.licenseId)
+      .populate("companyId", "name email");
+    company = license?.companyId;
+  }
+
+  // Student: congratulations + certificate details + button to view it
+  sendCompletionEmail(
+    student.email,
+    "course-completion-student",
+    `Congratulations ${memberName}! You completed ${courseTitle}`,
+    {
+      name: memberName,
+      courseTitle,
+      companyName: company?.name || "",
+      refId,
+      certificateUrl,
+    },
+  ).catch((err) =>
+    console.error("Failed to send completion email to student:", err),
+  );
+
+  // Company: notify that the employee completed the course (only for licenses)
+  if (company?.email) {
+    const staffEnrollUrl = `${config.frontend_url}/dashboard/company/courses/staff/${enrolledCourse.licenseId}`;
+    sendCompletionEmail(
+      company.email,
+      "course-completion-company",
+      `${memberName} has completed ${courseTitle}`,
+      {
+        name: company.name || "Your organisation",
+        memberName,
+        courseTitle,
+        companyName: company.name || "",
+        refId,
+        staffEnrollUrl,
+      },
+    ).catch((err) =>
+      console.error("Failed to send completion email to company:", err),
+    );
+  }
+};
+
 const updateEnrolledCourseIntoDB = async (
   id: string,
   payload: Partial<TEnrolledCourse>,
@@ -82,6 +145,10 @@ const updateEnrolledCourseIntoDB = async (
   if (!enrolledCourse) {
     throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
   }
+  // Only fire the completion emails on the transition to 100% — not on later
+  // PATCHes that keep re-sending progress = 100.
+  const isNewlyCompleted =
+    enrolledCourse.progress !== 100 && payload.progress === 100;
   if (payload.progress === 100) {
     payload.status = "completed";
     payload.completedDate = new Date();
@@ -90,6 +157,13 @@ const updateEnrolledCourseIntoDB = async (
     new: true,
     runValidators: true,
   });
+
+  // Send completion emails (non-blocking — fire and forget)
+  if (isNewlyCompleted && result) {
+    sendCompletionEmails(result).catch((err) =>
+      console.error("Failed to send course completion email:", err),
+    );
+  }
 
   return result;
 };

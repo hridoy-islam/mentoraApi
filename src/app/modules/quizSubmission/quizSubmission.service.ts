@@ -62,15 +62,15 @@ const evaluateAnswers = async (lessonId: string, providedAnswers: { questionId: 
 
   totalScore = Number(totalScore.toFixed(2));
 
-  // Use the explicitly configured passMarks when present; otherwise fall
-  // back to 50% of totalConfiguredMarks so quizzes without a passMarks
-  // value still behave sensibly. Previously this always used the 50%
-  // fallback and silently ignored quizConfig.passMarks entirely, so any
-  // admin-set pass threshold (e.g. 4/5, 3/5) had no effect on isPassed.
-  const passThreshold =
+  // Any score below 60% is now considered a fail. An explicitly configured
+  // passMarks still applies when it is higher than the 60% minimum, so a quiz
+  // can never be passed with less than 60% of the total configured marks.
+  const passThreshold = Math.max(
     typeof lesson.quizConfig?.passMarks === 'number'
       ? lesson.quizConfig.passMarks
-      : totalConfiguredMarks / 2;
+      : 0,
+    totalConfiguredMarks * 0.6
+  );
 
   const isPassed = totalScore >= passThreshold;
 

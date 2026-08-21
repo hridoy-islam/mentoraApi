@@ -1,8 +1,12 @@
 /* eslint-disable no-unused-vars */
 import { Model, Types } from "mongoose";
-
+export type TFAQ = {
+  question: string;
+  answer: string;
+};
 export interface TCourse {
   title: string;
+  courseOverview:string;
   description: string;
   categoryId: Types.ObjectId;
   image: string;
@@ -19,5 +23,7 @@ export interface TCourse {
   learningPoints?: string[];
   requirements?: string[];
   aboutDescription?: string;
+    faq?: TFAQ[];
+
   status: "block" | "active";
 }
