@@ -3,14 +3,14 @@ import { TCourse } from "./course.interface";
 
 const CourseSchema = new Schema<TCourse>(
   {
-    title: { type: String,  },
-    slug:{type:String},
-    courseOverview: { type: String  },
+    title: { type: String },
+    slug: { type: String },
+    courseOverview: { type: String },
     description: { type: String },
-    categoryId: { type: Schema.Types.ObjectId, ref: "Category",  },
-    image: { type: String,  },
-    instructorId: { type: Schema.Types.ObjectId, ref: "User",  },
-    price: { type: Number,},
+    categoryId: { type: Schema.Types.ObjectId, ref: "Category" },
+    image: { type: String },
+    instructorId: { type: Schema.Types.ObjectId, ref: "User" },
+    price: { type: Number },
     originalPrice: { type: Number },
     rating: { type: Number },
     reviews: { type: Number },
@@ -20,17 +20,26 @@ const CourseSchema = new Schema<TCourse>(
     resources: { type: Number },
     learningPoints: [{ type: String }],
     requirements: [{ type: String }],
-     faq: [
+    courseGuideUrl:{
+ type: String
+    },
+    faq: [
       {
         question: { type: String },
         answer: { type: String },
+      },
+    ],
+    testimonial: [
+      {
+        name: { type: String },
+        review: { type: String },
       },
     ],
     status: { type: String, enum: ["block", "active"], default: "active" },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const Course: Model<TCourse> = model<TCourse>("Course", CourseSchema);

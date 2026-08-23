@@ -4,9 +4,17 @@ export type TFAQ = {
   question: string;
   answer: string;
 };
+
+
+export type TTestimonial = {
+  name: string;
+  review: string;
+};
+
 export interface TCourse {
   title: string;
   courseOverview:string;
+  courseGuideUrl: string;
   description: string;
   categoryId: Types.ObjectId;
   image: string;
@@ -22,8 +30,9 @@ export interface TCourse {
   resources?: number;
   learningPoints?: string[];
   requirements?: string[];
-  aboutDescription?: string;
     faq?: TFAQ[];
+      testimonial?: TTestimonial[];
+
 
   status: "block" | "active";
 }

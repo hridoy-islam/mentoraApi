@@ -14,36 +14,35 @@ import { sendCompletionEmail } from "../../utils/sendCompletionEmail";
 import config from "../../config";
 
 export const generateUniqueRefId = async (
+  targetDate: Date = new Date(),
   session?: mongoose.ClientSession,
 ): Promise<string> => {
   let isUnique = false;
   let newRefId = "";
- 
+
+  const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const year = targetDate.getFullYear();
+
   while (!isUnique) {
-    const currentDate = new Date();
-    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const year = currentDate.getFullYear();
- 
-    // Generate a 5-digit string from uuid
+    // Extract numbers from UUID to form a 4-digit string
     let numericUuid = uuidv4().replace(/\D/g, "");
-    if (numericUuid.length < 5) {
-      numericUuid = numericUuid.padEnd(5, "0");
+    while (numericUuid.length < 4) {
+      numericUuid += Math.floor(Math.random() * 10).toString();
     }
-    const uniqueCode = numericUuid.substring(0, 5);
- 
+    const uniqueCode = numericUuid.substring(0, 4);
+
     newRefId = `MT-${month}-${year}-${uniqueCode}`;
- 
-    // Check if this refId already exists in the database
+
+    // Check database for existing refId
     const existingCourse = await EnrolledCourse.findOne({
       refId: newRefId,
     }).session(session || null);
- 
-    // If it doesn't exist, we break the loop
+
     if (!existingCourse) {
       isUnique = true;
     }
   }
- 
+
   return newRefId;
 };
 
@@ -145,20 +144,24 @@ const updateEnrolledCourseIntoDB = async (
   if (!enrolledCourse) {
     throw new AppError(httpStatus.NOT_FOUND, "EnrolledCourse not found");
   }
-  // Only fire the completion emails on the transition to 100% — not on later
-  // PATCHes that keep re-sending progress = 100.
+
   const isNewlyCompleted =
     enrolledCourse.progress !== 100 && payload.progress === 100;
+
   if (payload.progress === 100) {
     payload.status = "completed";
-    payload.completedDate = new Date();
+    const completedDate = new Date();
+    payload.completedDate = completedDate;
+    
+    // Generate refId based on completedDate upon completion
+    payload.refId = await generateUniqueRefId(completedDate);
   }
+
   const result = await EnrolledCourse.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
   });
 
-  // Send completion emails (non-blocking — fire and forget)
   if (isNewlyCompleted && result) {
     sendCompletionEmails(result).catch((err) =>
       console.error("Failed to send course completion email:", err),
@@ -167,6 +170,8 @@ const updateEnrolledCourseIntoDB = async (
 
   return result;
 };
+
+
 
 
 const createEnrolledCourseIntoDB = async (
@@ -233,10 +238,12 @@ const createEnrolledCourseIntoDB = async (
       );
     }
 
-    // Generate a strictly unique refId and assign it to the payload
-    // We pass the session here so the DB check respects the active transaction
-   payload.refId = await generateUniqueRefId(session);
-   
+    // Pass completedDate (or current date as fallback) to refId generator
+    const dateForRef = payload.completedDate
+      ? new Date(payload.completedDate)
+      : new Date();
+    payload.refId = await generateUniqueRefId(dateForRef, session);
+
     const result = await EnrolledCourse.create([payload], { session });
 
     if (!result.length) {
@@ -246,7 +253,6 @@ const createEnrolledCourseIntoDB = async (
     await session.commitTransaction();
     await session.endSession();
 
-    // Send enrollment emails (non-blocking — fire and forget)
     if (payload.licenseId) {
       const license = await CourseLicense.findById(payload.licenseId)
         .populate("companyId", "name email");
