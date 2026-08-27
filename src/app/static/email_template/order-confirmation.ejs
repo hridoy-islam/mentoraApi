@@ -3,44 +3,141 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <title>Order Confirmation</title>
+  <title>Order Confirmation – Medicare Training</title>
   <style type="text/css">
     @import url("https://fonts.googleapis.com/css?family=Nunito+Sans:400,700&display=swap");
 
     body {
-      width: 100% !important; height: 100%; margin: 0; padding: 0;
-      -webkit-text-size-adjust: none; background: #f2f4f6;
-      font-family: "Nunito Sans", Helvetica, Arial, sans-serif; color: #51545e;
+      width: 100% !important;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      -webkit-text-size-adjust: none;
+      background: #f2f4f6;
+      font-family: "Nunito Sans", Helvetica, Arial, sans-serif;
+      color: #51545e;
     }
-    h1 { margin: 0 0 20px; color: #333; font-size: 24px; font-weight: 700; }
-    h2 { margin: 0 0 16px; color: #333; font-size: 18px; font-weight: 700; }
-    p { font-size: 16px; line-height: 1.7; margin: 0 0 18px; }
-    a { color: #0f7cc0; text-decoration: none; }
+    h1 {
+      margin: 0 0 20px;
+      color: #333;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    h2 {
+      margin: 0 0 16px;
+      color: #333;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.7;
+      margin: 0 0 18px;
+    }
+    a {
+      color: #0f7cc0;
+      text-decoration: none;
+    }
 
-    .wrapper { width: 100%; padding: 30px 0; background: #f2f4f6; }
-    .container { width: 570px; margin: auto; background: #fff; border-radius: 8px; overflow: hidden; }
-    .logo { text-align: center; padding: 35px 20px 15px; }
-    .logo img { max-width: 220px; height: auto; }
-    .content { padding: 20px 40px 40px; }
-    .badge { display: inline-block; padding: 6px 16px; font-size: 14px; font-weight: 700; border-radius: 20px; margin-bottom: 20px; }
-    .badge-success { background: #d1fae5; color: #065f46; }
+    /* Wrapper & container – email safe */
+    .wrapper {
+      width: 100%;
+      padding: 30px 0;
+      background: #f2f4f6;
+    }
+    .container {
+      width: 570px;
+      margin: auto;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .logo {
+      text-align: center;
+      padding: 35px 20px 15px;
+    }
+    .logo img {
+      max-width: 220px;
+      height: auto;
+    }
+    .content {
+      padding: 20px 40px 40px;
+    }
 
-    .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    .items-table th { background: #f8fafc; border: 1px solid #e5e7eb; padding: 10px 12px; font-size: 13px; font-weight: 700; color: #444; text-align: left; }
-    .items-table td { border: 1px solid #e5e7eb; padding: 10px 12px; font-size: 14px; }
+    /* Fixed purchase details table */
+    .purchase-details {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 24px;
+      table-layout: fixed;         /* ensures equal/fixed column widths */
+    }
+    .purchase-details th,
+    .purchase-details td {
+      border: 1px solid #e2e8f0;
+      padding: 12px 14px;
+      font-size: 14px;
+      vertical-align: top;
+    }
+    .purchase-details th {
+      background-color: #f1f5f9;
+      color: #1e293b;
+      font-weight: 700;
+      text-align: left;
+      width: 32%;                 /* fixed width for labels */
+    }
+    .purchase-details td {
+      background-color: #ffffff;
+      color: #334155;
+      width: 68%;                 /* fixed width for values */
+      word-break: break-word;
+    }
+    .grand-row td {
+      background-color: #f8fafc;
+      font-weight: 700;
+      color: #0f172a;
+      border-top: 2px solid #cbd5e1;
+    }
+    .grand-row .label-cell {
+      color: #0f172a;
+    }
 
-    .totals { margin-top: 20px; width: 100%; }
-    .totals td { padding: 6px 12px; font-size: 14px; }
-    .totals .label { text-align: right; font-weight: 600; color: #555; width: 70%; }
-    .totals .value { text-align: right; width: 30%; }
-    .totals .grand-total { font-size: 18px; font-weight: 700; color: #333; border-top: 2px solid #333; padding-top: 10px; }
+    /* preserve right alignment for amount symbol */
+    .amount-value {
+      font-weight: 700;
+    }
 
-    .footer { text-align: left; padding: 30px 40px; font-size: 13px; color: #777; border-top: 1px solid #e5e7eb; background: #fafafa; line-height: 1.8; }
-    .footer strong { color: #444; }
+    .footer {
+      text-align: left;
+      padding: 30px 40px;
+      font-size: 13px;
+      color: #777;
+      border-top: 1px solid #e5e7eb;
+      background: #fafafa;
+      line-height: 1.8;
+    }
+    .footer strong {
+      color: #444;
+    }
 
     @media only screen and (max-width: 600px) {
-      .container { width: 100% !important; }
-      .content { padding: 25px; }
+      .container {
+        width: 100% !important;
+        border-radius: 0;
+      }
+      .content {
+        padding: 25px !important;
+      }
+      .purchase-details th,
+      .purchase-details td {
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+      .purchase-details th {
+        width: 35%;
+      }
+      .purchase-details td {
+        width: 65%;
+      }
     }
   </style>
 </head>
@@ -58,51 +155,52 @@
           </tr>
           <tr>
             <td class="content">
-              <h2>Thank you for your purchase, <%= name %>!</h2>
+              <!-- Greeting & intro -->
+              <p>Dear <%= name %>,</p>
+              <p>Thank you for choosing Medicare Training.</p>
+              <p>Your payment has been processed successfully, and your enrolment on <strong><%= course_name %></strong> is now confirmed.</p>
 
-              <h2>Order Summary</h2>
-              <table class="items-table" role="presentation">
-                <thead>
-                  <tr>
-                    <th>Course</th>
-                    <th style="text-align:center">Qty</th>
-                    <th style="text-align:right">Unit Price</th>
-                    <th style="text-align:right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% items.forEach(function(item) { %>
-                  <tr>
-                    <td><%= item.title %></td>
-                    <td style="text-align:center"><%= item.quantity %></td>
-                    <td style="text-align:right">&pound;<%= Number(item.unitPrice).toFixed(2) %></td>
-                    <td style="text-align:right">&pound;<%= Number(item.subTotal).toFixed(2) %></td>
-                  </tr>
-                  <% }) %>
-                </tbody>
-              </table>
+              <!-- Purchase details heading -->
+              <h2 style="margin-top: 10px;">Purchase details</h2>
 
-              <table class="totals" role="presentation">
-                <% if (discount > 0) { %>
+              <!-- FIXED WIDTH DETAIL TABLE -->
+              <table class="purchase-details" role="presentation" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                  <td class="label">Subtotal</td>
-                  <td class="value">&pound;<%= Number(subtotal).toFixed(2) %></td>
+                  <th scope="row">Course</th>
+                  <td><%= course_name %></td>
                 </tr>
                 <tr>
-                  <td class="label">Discount (<%= (discount * 100).toFixed(0) %>% off)</td>
-                  <td class="value" style="color:#059669;">-&pound;<%= Number(discountedAmount).toFixed(2) %></td>
+                  <th scope="row">Order number</th>
+                  <td><%= order_number %></td>
                 </tr>
-                <% } %>
                 <tr>
-                  <td class="label grand-total">Total</td>
-                  <td class="value grand-total">&pound;<%= Number(totalAmount).toFixed(2) %></td>
+                  <th scope="row">Purchase date</th>
+                  <td><%= purchase_date %></td>
+                </tr>
+                <!-- Grand total row with fixed layout -->
+                <tr class="grand-row">
+                  <th scope="row" class="label-cell">Amount paid</th>
+                  <td class="amount-value">&pound;<%= Number(amount_paid).toFixed(2) %></td>
                 </tr>
               </table>
+              <!-- END FIXED WIDTH DETAIL TABLE -->
 
-              <p style="margin-top: 30px;">
-                You can access your courses anytime from your dashboard.
+              <!-- Login prompt -->
+              <p style="margin-top: 10px;">
+                You can begin your training by logging in to your account:
+                <br />
+                <a href="https://medicaretraining.co.uk/login" target="_blank">https://medicaretraining.co.uk/login</a>
               </p>
-              <p>Best regards,<br /><strong>Medicare Training</strong></p>
+
+              <p>
+                Please retain this email for your records. If you have any questions regarding your purchase or course access, please contact our support team.
+              </p>
+
+              <p>
+                Kind regards,<br />
+                <strong>Medicare Training Team</strong><br />
+                <a href="https://medicaretraining.co.uk/" target="_blank">https://medicaretraining.co.uk/</a>
+              </p>
             </td>
           </tr>
           <tr>

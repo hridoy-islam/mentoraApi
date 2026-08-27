@@ -13,6 +13,7 @@ export type TOrder = {
   items: TOrderItem[];     // Array allows buying multiple DIFFERENT courses at once
   totalAmount: number;
   paymentStatus: "pending" | "paid" | "failed";
+  orderRef?: string;
   transactionId?: string;
   discount:Number;
   couponCode:string;

@@ -12,6 +12,7 @@ const OrderSchema = new Schema<TOrder>(
         subTotal: { type: Number, required: true },
       },
     ],
+    orderRef:{type: String},
     discount: { type: Number, default: 0 },
     couponCode: { type: String },
     totalAmount: { type: Number, required: true },

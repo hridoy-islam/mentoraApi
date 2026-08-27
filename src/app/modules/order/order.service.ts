@@ -17,6 +17,41 @@ const stripe = new Stripe(
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
+// ─── Order Reference Helpers ──────────────────────────────────────────────────
+
+const ORDER_REF_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+const randomOrderSuffix = (length = 6) => {
+  let suffix = "";
+  for (let i = 0; i < length; i++) {
+    suffix += ORDER_REF_CHARS.charAt(
+      Math.floor(Math.random() * ORDER_REF_CHARS.length)
+    );
+  }
+  return suffix;
+};
+
+/**
+ * Generate a unique `orderRef` in the format ORD-YYYYMMDD-XXXXXX.
+ * Guards against duplicates: if the ref already exists in the DB,
+ * regenerates a new suffix and retries until unique.
+ */
+const generateUniqueOrderRef = async (): Promise<string> => {
+  const datePart = moment().format("YYYYMMDD");
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const orderRef = `ORD-${datePart}-${randomOrderSuffix()}`;
+
+    const existing = await Order.findOne({ orderRef }).select("_id");
+    if (!existing) {
+      return orderRef;
+    }
+    console.warn(`⚠️  orderRef ${orderRef} already exists — regenerating...`);
+  }
+
+  return generateUniqueOrderRef();
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ShippingDetails {
@@ -132,6 +167,32 @@ const upsertCompanyLicenses = async (order: any) => {
 };
 
 /**
+ * Ensure the order has a non-empty `orderRef` before continuing.
+ * Waits for it to be written, and if it never appears, generates one
+ * and persists it so the confirmation email always has an order number.
+ */
+const waitForOrderRef = async (order: any, timeoutMs = 10000): Promise<string> => {
+  const startedAt = Date.now();
+
+  while (!order.orderRef && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const fresh = await Order.findById(order._id).select("orderRef").lean();
+    order.orderRef = fresh?.orderRef;
+  }
+
+  if (!order.orderRef) {
+    order.orderRef = await generateUniqueOrderRef();
+    order.orderRef = (await Order.findByIdAndUpdate(
+      order._id,
+      { orderRef: order.orderRef },
+      { new: true }
+    ))?.orderRef;
+  }
+
+  return order.orderRef;
+};
+
+/**
  * Send order confirmation email to the buyer.
  */
 const sendOrderConfirmationEmail = async (order: any) => {
@@ -152,18 +213,18 @@ const sendOrderConfirmationEmail = async (order: any) => {
       subTotal: item.subTotal,
     }));
 
-    const subtotal = items.reduce((sum: number, i: any) => sum + i.subTotal, 0);
-    const discountRate = Number(order.discount) || 0;
-    const discountedAmount = subtotal * discountRate;
+    const firstName = buyer.name?.trim().split(/\s+/)[0] || "Valued Customer";
+    const courseName = items.map((i: any) => i.title).join(", ");
+    const orderNumber = await waitForOrderRef(order);
+    const purchaseDate = moment(order.createdAt).format("DD MMM YYYY");
 
     await sendPaymentSuccessEmail(buyer.email, {
-      name: buyer.name || "Valued Customer",
-      items,
-      subtotal,
-      discount: discountRate,
-      discountedAmount,
-      totalAmount: order.totalAmount,
-  transactionId: order.transactionId,
+      name: firstName,
+      course_name: courseName,
+      order_number: orderNumber,
+      purchase_date: purchaseDate,
+      amount_paid: order.totalAmount,
+      transactionId: order.transactionId,
     });
 
     console.log(`📧 Confirmation email sent to ${buyer.email} for order ${order._id}`);
@@ -258,10 +319,13 @@ if (role === "student") {
   }
 
   // ── Build the order document including shippingDetails ─────────────────────
+  const orderRef = await generateUniqueOrderRef();
+
   const orderDoc = {
     buyerId,
     role,
     items: items.map(({ title: _title, ...item }) => item), // strip UI-only `title` field
+    orderRef,
     totalAmount,
     discount: discount ?? 0,
     couponCode: couponCode ?? null,
@@ -461,7 +525,9 @@ const createOrderIntoDB = async (payload: Partial<TOrder>) => {
     await assertStudentNotDuplicateEnrollment(buyerId.toString(), items as any);
   }
 
-  const order = await Order.create(payload);
+  const orderRef = await generateUniqueOrderRef();
+
+  const order = await Order.create({ ...payload, orderRef });
 
   if (role === "student") {
     for (const item of items || []) {
