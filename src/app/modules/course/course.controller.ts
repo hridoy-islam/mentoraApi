@@ -13,6 +13,15 @@ const getAllCourse: RequestHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const getArchivedCourse: RequestHandler = catchAsync(async (req, res) => {
+  const result = await CourseServices.getArchivedCourseFromDB(req.query);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Archived courses retrived succesfully",
+    data: result,
+  });
+});
 const getSingleCourse = catchAsync(async (req, res) => {
   const { id } = req.params;
   const result = await CourseServices.getSingleCourseFromDB(id);
@@ -58,6 +67,7 @@ const createCourse: RequestHandler = catchAsync(async (req, res) => {
 
 export const CourseControllers = {
   getAllCourse,
+  getArchivedCourse,
   getSingleCourse,
   updateCourse,
   createCourse,

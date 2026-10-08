@@ -8,7 +8,10 @@ import slugify from "slugify";
 
 import { Types } from "mongoose"
 
-const getAllCourseFromDB = async (query: Record<string, unknown>) => {
+const getAllCourseFromDB = async (
+  query: Record<string, unknown>,
+  status: "active" | "block" = "active"
+) => {
   const {
     minPrice,
     maxPrice,
@@ -23,7 +26,7 @@ const getAllCourseFromDB = async (query: Record<string, unknown>) => {
 
 
   const filter: any = {
-    status: "active",
+    status,
   }
 
   if (category && Types.ObjectId.isValid(category)) {
@@ -65,6 +68,10 @@ const getAllCourseFromDB = async (query: Record<string, unknown>) => {
   }
 }
 
+
+const getArchivedCourseFromDB = async (query: Record<string, unknown>) => {
+  return getAllCourseFromDB(query, "block")
+}
 
 const getSingleCourseFromDB = async (id: string) => {
   const result = await Course.findById(id).populate("instructorId");
@@ -117,6 +124,7 @@ const createCourseIntoDB = async (payload: Partial<TCourse>) => {
 
 export const CourseServices = {
   getAllCourseFromDB,
+  getArchivedCourseFromDB,
   getSingleCourseFromDB,
   updateCourseIntoDB,
   createCourseIntoDB,

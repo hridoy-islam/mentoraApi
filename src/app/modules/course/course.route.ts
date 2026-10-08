@@ -15,6 +15,11 @@ router.post(
   CourseControllers.createCourse
 );
 router.get(
+  "/archived",
+  auth("admin", "instructor"),
+  CourseControllers.getArchivedCourse
+);
+router.get(
   "/:id",
   CourseControllers.getSingleCourse
 );
